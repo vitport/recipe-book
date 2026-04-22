@@ -1,7 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(start *)"
+      "Bash(start *)",
+      "Bash(node -e ' *)",
+      "Bash(node --check \"_tmp_check.js\")",
+      "Bash(node -e \"require\\('fs'\\).unlinkSync\\('_tmp_check.js'\\)\")",
+      "Bash(node --check \"_tmp.js\")",
+      "Bash(node -e \"require\\('fs'\\).unlinkSync\\('_tmp.js'\\)\")"
     ]
   }
 }

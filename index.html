@@ -989,9 +989,13 @@ function filtered() {
 
 function hl(text, query) {
   if (!query) return esc(text);
-  const safe = esc(text);
-  const re = esc(query).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-  return safe.replace(new RegExp(`(${re})`,'gi'), '<mark class="hl">$1</mark>');
+  // Fix: regex-escape raw query, split raw text, then HTML-escape each piece.
+  // Old code ran esc() on the query first, so searching "a" corrupted &amp; → &<mark>a</mark>mp;
+  const re = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return text
+    .split(new RegExp(`(${re})`, 'gi'))
+    .map((part, i) => i % 2 === 0 ? esc(part) : `<mark class="hl">${esc(part)}</mark>`)
+    .join('');
 }
 
 // ─── RENDER ──────────────────────────────────────────────────────────
@@ -1303,9 +1307,12 @@ function saveRecipe() {
   persist(); closeEditor(); render(); updateStats();
   toast(`${dishEmo(r.dishType)} Recipe saved!`, 'ok');
 
-  // Particles
-  const fab = document.querySelector('.fab').getBoundingClientRect();
-  for (let i=0; i<6; i++) setTimeout(() => particle(fab.left+30+Math.random()*20-10, fab.top+10), i*80);
+  // Particles — guard against null in case FAB is hidden/removed
+  const fabEl = document.querySelector('.fab');
+  if (fabEl) {
+    const fab = fabEl.getBoundingClientRect();
+    for (let i=0; i<6; i++) setTimeout(() => particle(fab.left+30+Math.random()*20-10, fab.top+10), i*80);
+  }
 }
 
 // ─── DELETE ──────────────────────────────────────────────────────────
@@ -1483,24 +1490,45 @@ function parseRecipeText(text) {
   const servMatch = text.match(/(\d+)\s*(?:serv(?:ings?|es?)|portions?|people|מנות|порций|порции|человек)/i);
   if (servMatch) servings = parseInt(servMatch[1]);
 
+  // Section header patterns (all languages)
+  const ingHeaders = /^(?:ingredients?|you\s+will\s+need|מרכיבים|מצרכים|רכיבים|חומרים|למנה|לרוטב|לבצק|ингредиенты|состав|продукты):?\s*$/i;
+  const stepHeaders = /^(?:instructions?|directions?|steps?|method|preparation|אופן\s+הכנה|שלבי\s+הכנה|הוראות\s+הכנה|דרך\s+הכנה|הכנה|הוראות|способ\s+приготовления|приготовление|шаги):?\s*$/i;
+
+  // Hebrew ingredient line: contains a digit followed by a Hebrew unit anywhere
+  const heIngLine = /\d[^\n]*(?:כף|כפיות?|כוסות?|גרם|ק"ג|מ"ל|מל|ליטר|יחידות?|שיני|ענפי)/;
+
   for (let i = 0; i < lines.length; i++) {
     const l = lines[i];
 
     // Markdown headings
     if (/^#+\s/.test(l)) {
       const h = l.replace(/^#+\s*/, '');
-      const lo = h.toLowerCase();
       if (!name) { name = h; continue; }
-      if (/ingredi|מרכיב|ингред/.test(lo)) { mode = 'ing'; continue; }
-      if (/instruct|direction|step|method|הוראות|הכנה|приготов|способ/.test(lo)) { mode = 'step'; continue; }
+      if (ingHeaders.test(h)) { mode = 'ing'; continue; }
+      if (stepHeaders.test(h)) { mode = 'step'; continue; }
       continue;
     }
 
     // Section header words (standalone line)
-    if (/^(?:ingredients?|מרכיבים|ингредиенты):?\s*$/i.test(l)) { mode = 'ing'; continue; }
-    if (/^(?:instructions?|directions?|steps?|method|preparation|הוראות|הכנה|способ приготовления|приготовление):?\s*$/i.test(l)) { mode = 'step'; continue; }
+    if (ingHeaders.test(l)) { mode = 'ing'; continue; }
+    if (stepHeaders.test(l)) { mode = 'step'; continue; }
 
     if (!name) { name = l; continue; }
+
+    // Hebrew "שלב N" numbered step
+    const heStepMatch = l.match(/^שלב\s+\d+[.):]?\s*(.*)/);
+    if (heStepMatch) {
+      const val = heStepMatch[1].trim();
+      if (val) instructions.push(val);
+      mode = 'step';
+      continue;
+    }
+
+    // Numbered items → instructions
+    if (/^\d+[.)]\s/.test(l)) {
+      instructions.push(l.replace(/^\d+[.)]\s+/, ''));
+      continue;
+    }
 
     // Bullet items
     if (/^[-•*✓✔➤▸◦]\s/.test(l)) {
@@ -1509,15 +1537,16 @@ function parseRecipeText(text) {
       continue;
     }
 
-    // Numbered items → always instructions
-    if (/^\d+[.)]\s/.test(l)) {
-      instructions.push(l.replace(/^\d+[.)]\s+/, ''));
-      continue;
-    }
-
     // Second line with no marker and no mode = description
     if (!description && mode === '' && i === 1 && !/^\d/.test(l)) {
       description = l; continue;
+    }
+
+    // Auto-detect ingredient lines by Hebrew units when no header was found
+    if (mode !== 'step' && heIngLine.test(l)) {
+      if (mode !== 'ing') mode = 'ing';
+      ingredients.push(l);
+      continue;
     }
 
     if (mode === 'ing') ingredients.push(l);
@@ -1697,8 +1726,13 @@ document.getElementById('search').addEventListener('input', e => { q = e.target.
 
 // ─── INIT ────────────────────────────────────────────────────────────
 async function init() {
-  loadLocal();
-  await loadJSON();
+  // Isolate load errors so render/updateStats always run
+  try {
+    loadLocal();
+    await loadJSON();
+  } catch(e) {
+    console.error('Init load error:', e);
+  }
   render();
   updateStats();
   setupDZ('dz-file', handleFile, ['text/']);

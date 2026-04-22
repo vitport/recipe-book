@@ -1,0 +1,206 @@
+{
+  "recipes": [
+    {
+      "id": "demo-001",
+      "name": "Classic Pasta Carbonara",
+      "description": "A rich and creamy Roman pasta dish made with eggs, cheese, pancetta, and black pepper. No cream needed!",
+      "dishType": "dinner",
+      "kosherType": "non-kosher",
+      "cookingTime": 25,
+      "servings": 4,
+      "language": "en",
+      "photos": [],
+      "sourceUrl": "",
+      "ingredients": [
+        "400g spaghetti",
+        "200g pancetta or guanciale, diced",
+        "4 large eggs",
+        "100g Pecorino Romano, finely grated",
+        "50g Parmesan, finely grated",
+        "2 cloves garlic",
+        "Salt and black pepper to taste",
+        "Fresh parsley for garnish"
+      ],
+      "instructions": [
+        "Bring a large pot of salted water to boil. Cook spaghetti until al dente, reserving 1 cup of pasta water before draining.",
+        "In a bowl, whisk together eggs, Pecorino Romano, and Parmesan. Season generously with black pepper.",
+        "Cook pancetta in a large skillet over medium heat until crispy, about 5-7 minutes. Add garlic and cook 1 minute more.",
+        "Remove pan from heat. Add drained pasta and toss to combine with the pancetta fat.",
+        "Pour egg-cheese mixture over pasta, tossing quickly. Add splashes of pasta water to create a creamy sauce.",
+        "Serve immediately with extra Parmesan and freshly ground black pepper."
+      ],
+      "createdAt": "2026-01-15T10:00:00.000Z",
+      "updatedAt": "2026-01-15T10:00:00.000Z"
+    },
+    {
+      "id": "demo-002",
+      "name": "שקשוקה קלאסית",
+      "description": "ביצים מבושלות ברוטב עגבניות עשיר עם פלפלים ותבלינים. ארוחת בוקר מושלמת לכל המשפחה!",
+      "dishType": "breakfast",
+      "kosherType": "pareve",
+      "cookingTime": 30,
+      "servings": 3,
+      "language": "he",
+      "photos": [],
+      "sourceUrl": "",
+      "ingredients": [
+        "6 ביצים",
+        "4 עגבניות גדולות קצוצות (או קופסת עגבניות מרוסקות)",
+        "2 פלפלים אדומים קצוצים",
+        "1 בצל גדול קצוץ",
+        "4 שיני שום כתוש",
+        "3 כפות שמן זית",
+        "1 כפית פפריקה מתוקה",
+        "1/2 כפית כמון",
+        "פלפל חריף לפי טעם",
+        "מלח ופלפל שחור",
+        "פטרוזיליה קצוצה לקישוט"
+      ],
+      "instructions": [
+        "מחממים שמן זית במחבת גדולה ורחבה על אש בינונית. מוסיפים בצל ומטגנים עד שהוא מזהיב, כ-8 דקות.",
+        "מוסיפים פלפלים ושום ומבשלים עוד 5 דקות עד שמתרככים.",
+        "מוסיפים עגבניות, פפריקה, כמון, מלח ופלפל. מבשלים על אש נמוכה 15 דקות עד שהרוטב מסמיך.",
+        "יוצרים גומות ברוטב ושוברים לתוכן ביצה. מכסים ומבשלים 5-8 דקות עד שהחלבון מוצק והחלמון נוזלי.",
+        "מגישים עם לחם טרי ופטרוזיליה קצוצה."
+      ],
+      "createdAt": "2026-01-16T08:30:00.000Z",
+      "updatedAt": "2026-01-16T08:30:00.000Z"
+    },
+    {
+      "id": "demo-003",
+      "name": "Борщ Украинский",
+      "description": "Традиционный украинский борщ с говядиной, свёклой и капустой. Густой, наваристый и очень вкусный!",
+      "dishType": "soup",
+      "kosherType": "meat",
+      "cookingTime": 120,
+      "servings": 8,
+      "language": "ru",
+      "photos": [],
+      "sourceUrl": "",
+      "ingredients": [
+        "500г говядины (грудинка или рёбра)",
+        "3 средние свёклы",
+        "1/2 кочана капусты, нашинкованной",
+        "3 картофелины, нарезанные кубиками",
+        "2 моркови",
+        "2 луковицы",
+        "3 помидора или 2 ст.л. томатной пасты",
+        "4 зубчика чеснока",
+        "3 ст.л. растительного масла",
+        "2 ст.л. уксуса",
+        "Лавровый лист, соль, перец",
+        "Свежий укроп и сметана для подачи"
+      ],
+      "instructions": [
+        "Залейте говядину холодной водой (3 литра), доведите до кипения, снимите пену. Варите на медленном огне 1 час.",
+        "Натрите свёклу на крупной тёрке. Обжарьте на масле 5 минут, добавьте уксус и томатную пасту. Тушите 15 минут.",
+        "Нарежьте лук и морковь. Обжарьте на отдельной сковороде до золотистого цвета.",
+        "Добавьте в бульон картофель и капусту. Варите 15 минут.",
+        "Добавьте зажарку из лука и моркови, затем свёклу. Варите ещё 10 минут.",
+        "Добавьте чеснок, лавровый лист, соль и перец. Дайте настояться 20 минут.",
+        "Подавайте горячим со сметаной и свежим укропом."
+      ],
+      "createdAt": "2026-01-17T12:00:00.000Z",
+      "updatedAt": "2026-01-17T12:00:00.000Z"
+    },
+    {
+      "id": "demo-004",
+      "name": "Chocolate Lava Cake",
+      "description": "Decadent individual chocolate cakes with a warm, gooey molten center. Perfect for date night!",
+      "dishType": "dessert",
+      "kosherType": "dairy",
+      "cookingTime": 20,
+      "servings": 4,
+      "language": "en",
+      "photos": [],
+      "sourceUrl": "",
+      "ingredients": [
+        "170g dark chocolate (70%), chopped",
+        "115g unsalted butter",
+        "200g powdered sugar",
+        "3 large eggs",
+        "3 egg yolks",
+        "1 tsp vanilla extract",
+        "90g all-purpose flour",
+        "Pinch of salt",
+        "Butter and cocoa powder for ramekins",
+        "Vanilla ice cream to serve"
+      ],
+      "instructions": [
+        "Preheat oven to 220°C (425°F). Butter 4 ramekins and dust with cocoa powder.",
+        "Melt chocolate and butter together in a double boiler or microwave in 30-second intervals. Stir until smooth.",
+        "Whisk powdered sugar into the chocolate mixture. Add eggs, egg yolks, and vanilla — whisk until combined.",
+        "Fold in flour and salt until just combined. Do not overmix.",
+        "Divide batter evenly among prepared ramekins. At this point you can refrigerate up to 24 hours.",
+        "Bake for exactly 12-13 minutes — edges firm but center still jiggles. Rest 1 minute.",
+        "Run a knife around edges, invert onto plates. Serve immediately with ice cream."
+      ],
+      "createdAt": "2026-01-18T18:00:00.000Z",
+      "updatedAt": "2026-01-18T18:00:00.000Z"
+    },
+    {
+      "id": "demo-005",
+      "name": "חומוס ביתי",
+      "description": "חומוס קרמי ועשיר, מוכן מאפס עם חומוס מבושל. הסוד הוא בטחינה איכותית ושפע של שמן זית.",
+      "dishType": "snack",
+      "kosherType": "pareve",
+      "cookingTime": 15,
+      "servings": 6,
+      "language": "he",
+      "photos": [],
+      "sourceUrl": "",
+      "ingredients": [
+        "400g חומוס מבושל (מקופסה או מבושל בבית)",
+        "4 כפות טחינה גולמית",
+        "3 כפות מיץ לימון טרי",
+        "2 שיני שום",
+        "1/4 כפית כמון",
+        "קרח - 3-4 קוביות",
+        "מלח לפי טעם",
+        "שמן זית, פפריקה ופטרוזיליה לקישוט"
+      ],
+      "instructions": [
+        "שומרים קצת מנוזל הבישול של החומוס. מסירים את הקליפות מהגרגירים (אופציונלי לחומוס חלק יותר).",
+        "מעבדים במעבד מזון: שום, לימון, טחינה ומלח - דקה שלמה.",
+        "מוסיפים את החומוס וקוביות קרח. מעבדים 4-5 דקות עד לקבלת מרקם קרמי חלק.",
+        "מכוונים את הסמיכות עם נוזל הבישול. מוסיפים כמון ומלח לפי טעם.",
+        "מגישים בצלחת עמוקה, יוצרים גומה במרכז ומוסיפים שמן זית, פפריקה ופטרוזיליה."
+      ],
+      "createdAt": "2026-01-19T14:00:00.000Z",
+      "updatedAt": "2026-01-19T14:00:00.000Z"
+    },
+    {
+      "id": "demo-006",
+      "name": "Greek Salad",
+      "description": "A fresh and vibrant Mediterranean salad with crispy vegetables, olives, and creamy feta. Light and satisfying!",
+      "dishType": "salad",
+      "kosherType": "dairy",
+      "cookingTime": 10,
+      "servings": 4,
+      "language": "en",
+      "photos": [],
+      "sourceUrl": "",
+      "ingredients": [
+        "4 large tomatoes, cut into wedges",
+        "1 large cucumber, sliced",
+        "1 green bell pepper, sliced",
+        "1 red onion, thinly sliced",
+        "200g Kalamata olives",
+        "200g feta cheese, cubed",
+        "4 tbsp extra virgin olive oil",
+        "2 tbsp red wine vinegar",
+        "1 tsp dried oregano",
+        "Salt and pepper to taste"
+      ],
+      "instructions": [
+        "Combine tomatoes, cucumber, bell pepper, and red onion in a large bowl.",
+        "Add olives and feta cheese on top — do not mix yet.",
+        "Whisk together olive oil, red wine vinegar, oregano, salt, and pepper.",
+        "Drizzle dressing over the salad just before serving. Toss gently.",
+        "Serve immediately with crusty bread."
+      ],
+      "createdAt": "2026-01-20T13:00:00.000Z",
+      "updatedAt": "2026-01-20T13:00:00.000Z"
+    }
+  ]
+}

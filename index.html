@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>🍳 My Recipe Book</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="apple-touch-icon" href="apple-touch-icon.svg">
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Dancing+Script:wght@600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -331,6 +333,17 @@ mark.hl{background:#FFE082;border-radius:3px;padding:0 2px;}
   .hdr-sub{display:none;}
 }
 
+/* ── SORT ── */
+.sort-wrap{display:flex;align-items:center;gap:.5rem;margin-left:auto;}
+.sort-label{font-size:.78rem;font-weight:800;color:var(--muted);white-space:nowrap;}
+.sort-sel{padding:.28rem .7rem .28rem .65rem;border:2px solid var(--primary-xl);
+  border-radius:50px;font-family:'Nunito',sans-serif;font-size:.8rem;font-weight:700;
+  color:var(--primary);background:#FFF3E0;cursor:pointer;outline:none;
+  transition:var(--ease);-webkit-appearance:none;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23FF6B35'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right .6rem center;padding-right:1.75rem;}
+.sort-sel:hover,.sort-sel:focus{border-color:var(--primary);background-color:#FFE8D6;}
+
 /* ── URL NOTE BOX ── */
 .note{background:#FFF3E0;border:1.5px solid var(--primary-xl);border-radius:var(--rs);
   padding:.75rem 1rem;font-size:.82rem;color:#92400E;margin-bottom:1rem;line-height:1.55;}
@@ -408,6 +421,18 @@ mark.hl{background:#FFE082;border-radius:3px;padding:0 2px;}
 <div class="stats-bar">
   <span class="stat-chip" id="stat-count">0 recipes</span>
   <span class="filter-hint" id="stat-hint"></span>
+  <div class="sort-wrap">
+    <span class="sort-label">Sort by:</span>
+    <select class="sort-sel" id="sort-sel" onchange="setSort(this.value)">
+      <option value="default">📅 Default (newest)</option>
+      <option value="name-az">🔤 Name A→Z</option>
+      <option value="name-za">🔤 Name Z→A</option>
+      <option value="time-asc">⏱️ Time (shortest)</option>
+      <option value="time-desc">⏱️ Time (longest)</option>
+      <option value="ings-most">🥕 Most ingredients</option>
+      <option value="ings-fewest">🥕 Fewest ingredients</option>
+    </select>
+  </div>
 </div>
 
 <!-- ═══════════════ GRID ═══════════════ -->
@@ -450,7 +475,10 @@ mark.hl{background:#FFE082;border-radius:3px;padding:0 2px;}
           <textarea class="ftextarea" id="paste-area" rows="9"
             placeholder="Paste recipe text here… (any language)&#10;&#10;Works with any website — just select all text on the recipe page and paste it here!"></textarea>
         </div>
-        <button class="btn btn-primary" style="width:100%;margin-bottom:.75rem;font-size:1rem;padding:.85rem" onclick="parsePasteText()">🔍 Parse &amp; Preview Recipe</button>
+        <button class="btn btn-primary" style="width:100%;margin-bottom:.75rem;font-size:1rem;padding:.85rem" id="paste-parse-btn" onclick="parsePasteText()">🔍 Parse &amp; Preview Recipe</button>
+        <div id="paste-ai-loading" style="display:none" class="spinner-wrap">
+          <div class="spinner"></div><p style="color:var(--muted)">🤖 AI is parsing your recipe…</p>
+        </div>
         <div id="paste-preview" style="display:none">
           <div class="paste-preview-box" id="paste-preview-content"></div>
           <div style="display:flex;gap:.6rem;margin-top:.85rem">
@@ -477,7 +505,7 @@ mark.hl{background:#FFE082;border-radius:3px;padding:0 2px;}
           <button class="btn btn-primary" onclick="fetchURL()">🔗 Fetch Recipe</button>
         </div>
         <div id="url-loading" style="display:none" class="spinner-wrap">
-          <div class="spinner"></div><p style="color:var(--muted)">Fetching…</p>
+          <div class="spinner"></div><p id="url-loading-msg" style="color:var(--muted)">Fetching…</p>
         </div>
       </div>
 
@@ -511,6 +539,9 @@ mark.hl{background:#FFE082;border-radius:3px;padding:0 2px;}
         <div id="ocr-result" style="display:none">
           <p style="font-weight:800;margin:.9rem 0 .4rem">📝 Extracted Text:</p>
           <div class="ocr-preview" id="ocr-text"></div>
+          <div id="ocr-ai-loading" style="display:none" class="spinner-wrap">
+            <div class="spinner"></div><p style="color:var(--muted)">🤖 AI is parsing your recipe…</p>
+          </div>
           <div style="display:flex;gap:.6rem;margin-top:.9rem">
             <button class="btn btn-primary" onclick="editorFromOCR()">Open in Editor →</button>
             <button class="btn btn-ghost btn-sm" onclick="resetOCR()">Try Again</button>
@@ -535,6 +566,9 @@ mark.hl{background:#FFE082;border-radius:3px;padding:0 2px;}
         <div id="pdf-result" style="display:none">
           <p style="font-weight:800;margin:.9rem 0 .4rem">📝 Extracted Text:</p>
           <div class="ocr-preview" id="pdf-text"></div>
+          <div id="pdf-ai-loading" style="display:none" class="spinner-wrap">
+            <div class="spinner"></div><p style="color:var(--muted)">🤖 AI is parsing your recipe…</p>
+          </div>
           <div style="display:flex;gap:.6rem;margin-top:.9rem">
             <button class="btn btn-primary" onclick="editorFromPDF()">Open in Editor →</button>
             <button class="btn btn-ghost btn-sm" onclick="resetPDF()">Try Again</button>
@@ -699,6 +733,7 @@ if (typeof pdfjsLib !== 'undefined') {
 let recipes = [];
 let flt = { dish: 'all', kosher: 'all' };
 let q = '';
+let sortBy = localStorage.getItem('rb_sort') || 'default';
 let editId = null;
 let edPhotos = [];
 let pendingText = '';
@@ -740,6 +775,20 @@ async function loadJSON() {
     const fresh = list.filter(x => !existing.has(x.id));
     if (fresh.length) { recipes = [...recipes, ...fresh]; persist(); }
   } catch(e) { console.warn('recipes.json:', e.message); }
+}
+
+async function syncToServer() {
+  try {
+    const res = await fetch('/save-recipes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipes })
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    toast('Saved ✓', 'ok');
+  } catch(e) {
+    toast('Save failed — offline mode', 'err');
+  }
 }
 
 function exportJSON() {
@@ -926,7 +975,7 @@ function handleJSON(e) {
         const i = recipes.findIndex(x => x.id === r.id);
         if (i >= 0) recipes[i] = r; else { recipes.push(r); n++; }
       });
-      persist(); render(); updateStats();
+      persist(); render(); updateStats(); syncToServer();
       toast(`✅ Imported ${list.length} recipes`, 'ok');
     } catch(err) { toast('❌ Invalid JSON file', 'err'); }
   };
@@ -998,10 +1047,40 @@ function hl(text, query) {
     .join('');
 }
 
+// ─── SORT ────────────────────────────────────────────────────────────
+function setSort(val) {
+  sortBy = val;
+  localStorage.setItem('rb_sort', val);
+  render();
+}
+
+function nameCompare(a, b) {
+  const na = a.name || '';
+  const nb = b.name || '';
+  try { return na.localeCompare(nb, undefined, { sensitivity: 'base', numeric: true }); }
+  catch(e) { return na < nb ? -1 : na > nb ? 1 : 0; }
+}
+
+function sorted(list) {
+  switch (sortBy) {
+    case 'name-az':   return [...list].sort(nameCompare);
+    case 'name-za':   return [...list].sort((a, b) => nameCompare(b, a));
+    case 'time-asc':  return [...list].sort((a, b) => (a.cookingTime || Infinity) - (b.cookingTime || Infinity));
+    case 'time-desc': return [...list].sort((a, b) => (b.cookingTime || 0) - (a.cookingTime || 0));
+    case 'ings-most': return [...list].sort((a, b) => (b.ingredients||[]).length - (a.ingredients||[]).length);
+    case 'ings-fewest': return [...list].sort((a, b) => (a.ingredients||[]).length - (b.ingredients||[]).length);
+    default:          return [...list].sort((a, b) => {
+      const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return tb - ta;
+    });
+  }
+}
+
 // ─── RENDER ──────────────────────────────────────────────────────────
 function render() {
   const g = document.getElementById('grid');
-  const list = filtered();
+  const list = sorted(filtered());
   if (!list.length) {
     g.innerHTML = `<div class="empty">
       <div class="empty-ico">${recipes.length ? '🔍' : '🍽️'}</div>
@@ -1304,7 +1383,7 @@ function saveRecipe() {
   if (editId) { const i = recipes.findIndex(x=>x.id===editId); if (i>=0) recipes[i]=r; }
   else recipes.unshift(r);
 
-  persist(); closeEditor(); render(); updateStats();
+  persist(); closeEditor(); render(); updateStats(); syncToServer();
   toast(`${dishEmo(r.dishType)} Recipe saved!`, 'ok');
 
   // Particles — guard against null in case FAB is hidden/removed
@@ -1325,7 +1404,7 @@ function delR(id) {
 
 function confirmDel() {
   recipes = recipes.filter(x=>x.id!==delId);
-  persist(); render(); updateStats(); closeM('m-confirm');
+  persist(); render(); updateStats(); closeM('m-confirm'); syncToServer();
   toast('🗑️ Recipe deleted');
   delId = null;
 }
@@ -1357,7 +1436,10 @@ function switchTab(btn, paneId) {
 async function fetchURL() {
   const url = document.getElementById('url-in').value.trim();
   if (!url) { toast('⚠️ Enter a URL', 'err'); return; }
-  document.getElementById('url-loading').style.display = 'block';
+  const loadingEl = document.getElementById('url-loading');
+  const loadingMsg = document.getElementById('url-loading-msg');
+  loadingEl.style.display = 'block';
+  loadingMsg.textContent = 'Fetching…';
   try {
     const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
     const ctrl = new AbortController();
@@ -1367,12 +1449,22 @@ async function fetchURL() {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const json = await res.json();
     if (!json.contents) throw new Error('empty response');
-    const recipe = parseHTML(json.contents, url);
-    document.getElementById('url-loading').style.display = 'none';
+    let recipe;
+    try {
+      const doc = new DOMParser().parseFromString(json.contents, 'text/html');
+      const rawText = (doc.body.innerText || doc.body.textContent || '').slice(0, 8000);
+      loadingMsg.textContent = '🤖 AI is parsing your recipe…';
+      recipe = await ollamaParseRecipe(rawText);
+      recipe.sourceUrl = url;
+    } catch(aiErr) {
+      toast('Ollama not available, using basic parser', '');
+      recipe = parseHTML(json.contents, url);
+    }
+    loadingEl.style.display = 'none';
     openEditor(recipe);
     toast('🔗 Recipe extracted!', 'ok');
   } catch(e) {
-    document.getElementById('url-loading').style.display = 'none';
+    loadingEl.style.display = 'none';
     toast('⚠️ URL fetch failed — switching to Paste Text', 'err');
     switchToTab('tp-paste');
     const area = document.getElementById('paste-area');
@@ -1465,11 +1557,71 @@ function parseText(text) {
   return { name, description, ingredients, instructions, language: detectLang(text) };
 }
 
+// ─── OLLAMA AI PARSING ───────────────────────────────────────────────
+async function ollamaParseRecipe(text) {
+  const prompt = `Extract recipe information from the following text and return ONLY a JSON object with these fields:
+{
+  "name": "string",
+  "description": "string",
+  "ingredients": ["string"],
+  "instructions": ["string"],
+  "cookTime": number (minutes),
+  "servings": number,
+  "dishType": "one of [breakfast,lunch,dinner,dessert,snack,soup,salad,side]",
+  "kosherType": "one of [meat,dairy,pareve,non-kosher]",
+  "language": "one of [en,he,ru]"
+}
+Text: ${text}`;
+
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 60000);
+  try {
+    const res = await fetch('http://localhost:11434/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'mistral', prompt, stream: false }),
+      signal: ctrl.signal
+    });
+    clearTimeout(timer);
+    if (!res.ok) throw new Error('Ollama HTTP ' + res.status);
+    const data = await res.json();
+    const jsonMatch = (data.response || '').match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('No JSON in Ollama response');
+    const p = JSON.parse(jsonMatch[0]);
+    return {
+      name: p.name || '',
+      description: p.description || '',
+      ingredients: Array.isArray(p.ingredients) ? p.ingredients : [],
+      instructions: Array.isArray(p.instructions) ? p.instructions : [],
+      cookingTime: Number(p.cookTime) || 0,
+      servings: Number(p.servings) || 0,
+      dishType: p.dishType || '',
+      kosherType: p.kosherType || '',
+      language: p.language || detectLang(p.name || ''),
+    };
+  } catch(e) {
+    clearTimeout(timer);
+    throw e;
+  }
+}
+
 // ─── PASTE TEXT ──────────────────────────────────────────────────────
-function parsePasteText() {
+async function parsePasteText() {
   const text = document.getElementById('paste-area').value.trim();
   if (!text) { toast('⚠️ Paste some recipe text first', 'err'); return; }
-  parsedPasteRecipe = parseRecipeText(text);
+  const btn = document.getElementById('paste-parse-btn');
+  const aiLoading = document.getElementById('paste-ai-loading');
+  btn.disabled = true;
+  aiLoading.style.display = 'block';
+  document.getElementById('paste-preview').style.display = 'none';
+  try {
+    parsedPasteRecipe = await ollamaParseRecipe(text);
+  } catch(e) {
+    toast('Ollama not available, using basic parser', '');
+    parsedPasteRecipe = parseRecipeText(text);
+  }
+  btn.disabled = false;
+  aiLoading.style.display = 'none';
   showPastePreview(parsedPasteRecipe);
 }
 
@@ -1650,9 +1802,22 @@ async function handlePDF(e) {
   }
 }
 
-function editorFromPDF() {
+async function editorFromPDF() {
   if (!pendingPDFText) return;
-  openEditor(parseText(pendingPDFText));
+  const aiLoading = document.getElementById('pdf-ai-loading');
+  const btns = document.querySelectorAll('#pdf-result button');
+  btns.forEach(b => b.disabled = true);
+  aiLoading.style.display = 'block';
+  let recipe;
+  try {
+    recipe = await ollamaParseRecipe(pendingPDFText);
+  } catch(e) {
+    toast('Ollama not available, using basic parser', '');
+    recipe = parseText(pendingPDFText);
+  }
+  aiLoading.style.display = 'none';
+  btns.forEach(b => b.disabled = false);
+  openEditor(recipe);
 }
 
 function resetPDF() {
@@ -1689,9 +1854,22 @@ async function runOCR(e) {
   }
 }
 
-function editorFromOCR() {
+async function editorFromOCR() {
   if (!ocrText) return;
-  openEditor(parseText(ocrText));
+  const aiLoading = document.getElementById('ocr-ai-loading');
+  const btns = document.querySelectorAll('#ocr-result button');
+  btns.forEach(b => b.disabled = true);
+  aiLoading.style.display = 'block';
+  let recipe;
+  try {
+    recipe = await ollamaParseRecipe(ocrText);
+  } catch(e) {
+    toast('Ollama not available, using basic parser', '');
+    recipe = parseText(ocrText);
+  }
+  aiLoading.style.display = 'none';
+  btns.forEach(b => b.disabled = false);
+  openEditor(recipe);
 }
 
 function resetOCR() {
@@ -1733,6 +1911,7 @@ async function init() {
   } catch(e) {
     console.error('Init load error:', e);
   }
+  document.getElementById('sort-sel').value = sortBy;
   render();
   updateStats();
   setupDZ('dz-file', handleFile, ['text/']);

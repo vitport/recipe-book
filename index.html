@@ -369,6 +369,55 @@ mark.hl{background:#FFE082;border-radius:3px;padding:0 2px;}
   padding:.65rem .9rem;font-size:.8rem;color:#92400E;margin-bottom:.8rem;line-height:1.5;}
 .pdf-note{background:#EFF6FF;border:1.5px solid #93C5FD;border-radius:var(--rs);
   padding:.65rem .9rem;font-size:.82rem;color:#1D4ED8;margin-bottom:.9rem;line-height:1.5;}
+
+/* ── IMAGE PICKER ── */
+.ip-section-lbl{font-size:.78rem;font-weight:900;text-transform:uppercase;
+  letter-spacing:.08em;color:var(--muted);margin:.85rem 0 .5rem;}
+.ip-top-card{border:3px solid #F59E0B;border-radius:var(--r);overflow:hidden;
+  cursor:pointer;transition:var(--ease);position:relative;background:#F3F4F6;}
+.ip-top-card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(245,158,11,.25);}
+.ip-top-card.sel{border-color:var(--pass);}
+.ip-top-card img{width:100%;max-height:240px;object-fit:cover;display:block;}
+.ip-check{position:absolute;top:.5rem;right:.5rem;width:26px;height:26px;
+  background:var(--pass);color:#fff;border-radius:50%;display:none;
+  align-items:center;justify-content:center;font-size:.85rem;font-weight:900;z-index:2;}
+.ip-top-card.sel .ip-check,.ip-img-card.sel .ip-check{display:flex;}
+.ip-top-meta{padding:.4rem .6rem .6rem;background:#fffbeb;}
+.ip-top-badge{background:#F59E0B;color:#fff;font-size:.7rem;font-weight:900;
+  padding:.18rem .6rem;border-radius:50px;display:inline-block;margin-bottom:.25rem;}
+.ip-top-reason{font-size:.8rem;color:var(--muted);}
+.ip-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.55rem;margin-bottom:.8rem;}
+@media(max-width:480px){.ip-grid{grid-template-columns:repeat(2,1fr);}}
+.ip-img-card{border:2px solid var(--border);border-radius:var(--rs);overflow:hidden;
+  aspect-ratio:1;cursor:pointer;transition:var(--ease);position:relative;background:#F3F4F6;}
+.ip-img-card:hover{border-color:var(--primary-l);transform:translateY(-2px);}
+.ip-img-card.sel{border-color:var(--pass);box-shadow:0 0 0 2px rgba(16,185,129,.2);}
+.ip-img-card img{width:100%;height:100%;object-fit:cover;display:block;}
+.ip-img-card .ip-check{width:20px;height:20px;font-size:.72rem;top:.3rem;right:.3rem;}
+
+/* ── PHOTO MANAGER ── */
+.pm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));
+  gap:.75rem;margin-bottom:1.1rem;min-height:50px;}
+.pm-empty{color:var(--muted);text-align:center;padding:1.5rem;font-size:.88rem;
+  border:2px dashed var(--border);border-radius:var(--rs);grid-column:1/-1;}
+.pm-card{border-radius:var(--rs);border:2px solid var(--border);
+  background:#fff;transition:var(--ease);}
+.pm-card.is-main{border-color:var(--primary);
+  box-shadow:0 0 0 2px rgba(255,107,53,.18);}
+.pm-thumb{aspect-ratio:1;overflow:hidden;position:relative;
+  border-radius:calc(var(--rs) - 2px) calc(var(--rs) - 2px) 0 0;background:#F3F4F6;}
+.pm-thumb img{width:100%;height:100%;object-fit:cover;}
+.pm-main-badge{position:absolute;top:.3rem;left:.3rem;background:var(--primary);
+  color:#fff;font-size:.62rem;font-weight:900;padding:.15rem .45rem;border-radius:50px;}
+.pm-controls{display:flex;gap:.22rem;padding:.35rem .4rem;justify-content:center;flex-wrap:wrap;}
+.pm-btn{background:none;border:1px solid var(--border);border-radius:6px;
+  cursor:pointer;font-size:.78rem;padding:.2rem .38rem;transition:var(--ease);color:var(--muted);}
+.pm-btn:hover{background:var(--primary);color:#fff;border-color:var(--primary);}
+.pm-btn.del:hover{background:#EF4444;border-color:#EF4444;}
+.pm-add-row{border-top:1px solid var(--border);padding-top:1rem;
+  display:flex;gap:.55rem;flex-wrap:wrap;align-items:flex-start;}
+.pm-url-row{display:flex;gap:.45rem;width:100%;margin-top:.4rem;}
+.pm-url-row .finput{flex:1;}
 </style>
 </head>
 <body>
@@ -649,12 +698,12 @@ mark.hl{background:#FFE082;border-radius:3px;padding:0 2px;}
 
       <!-- Photos -->
       <div style="margin-top:1.2rem">
-        <div class="sec-title">📸 Photos</div>
-        <div class="photo-grid" id="ed-photos"></div>
-        <div class="dropzone" style="padding:.9rem" onclick="document.getElementById('inp-photos').click()">
-          <span>📷 Click to add photos</span>
-          <input type="file" id="inp-photos" accept="image/*" multiple style="display:none" onchange="addPhotos(event)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem">
+          <div class="sec-title" style="margin:0">📸 Photos <span id="ed-photo-count" style="font-size:.8rem;color:var(--muted);font-weight:700"></span></div>
+          <button class="btn btn-outline btn-sm" onclick="openPhotoMgr()">📷 Manage Photos</button>
         </div>
+        <div class="photo-grid" id="ed-photos"></div>
+        <input type="file" id="inp-photos" accept="image/*" multiple style="display:none" onchange="addPhotos(event)">
       </div>
 
       <!-- Ingredients -->
@@ -716,6 +765,50 @@ mark.hl{background:#FFE082;border-radius:3px;padding:0 2px;}
   </div>
 </div>
 
+<!-- ═══════════════ IMAGE PICKER MODAL ═══════════════ -->
+<div class="overlay" id="m-image-picker" style="display:none" onclick="overlayClick(event,'m-image-picker')">
+  <div class="modal" style="max-width:680px" onclick="event.stopPropagation()">
+    <div class="modal-hdr">
+      <h2>🖼️ Choose Recipe Photos</h2>
+      <button class="modal-close" onclick="closeM('m-image-picker')">✕</button>
+    </div>
+    <div class="modal-body" id="picker-body" style="max-height:72vh;overflow-y:auto">
+      <div class="spinner-wrap"><div class="spinner"></div>
+        <p style="color:var(--muted)">🤖 Mistral is finding food images…</p>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeM('m-image-picker')">Skip — no image</button>
+      <button class="btn btn-primary" id="picker-confirm-btn" onclick="confirmImagePick()" disabled>✅ Use Selected (0)</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ PHOTO MANAGER MODAL ═══════════════ -->
+<div class="overlay" id="m-photo-mgr" style="display:none" onclick="overlayClick(event,'m-photo-mgr')">
+  <div class="modal" style="max-width:620px" onclick="event.stopPropagation()">
+    <div class="modal-hdr">
+      <h2>📷 Photo Manager</h2>
+      <button class="modal-close" onclick="closePhotoMgr()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="pm-grid" id="pm-grid"></div>
+      <div class="pm-add-row">
+        <button class="btn btn-outline btn-sm" onclick="document.getElementById('pm-file-input').click()">📁 Upload from device</button>
+        <input type="file" id="pm-file-input" accept="image/*" multiple style="display:none" onchange="pmAddFiles(event)">
+        <button class="btn btn-outline btn-sm" onclick="togglePMUrl()">🔗 Add from URL</button>
+        <div class="pm-url-row" id="pm-url-row" style="display:none">
+          <input class="finput" id="pm-url-field" type="url" placeholder="https://…image.jpg">
+          <button class="btn btn-primary btn-sm" onclick="pmAddFromURL()">Add</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="closePhotoMgr()">✅ Done</button>
+    </div>
+  </div>
+</div>
+
 <!-- Toast & hidden inputs -->
 <div id="toast-box"></div>
 <input type="file" id="inp-json" accept=".json" style="display:none" onchange="handleJSON(event)">
@@ -745,6 +838,10 @@ let carIdx = 0;
 let carTotal = 0;
 let previewOpen = false;
 let parsedPasteRecipe = null;
+// Image picker state
+let pickerSelected = new Set();
+let pickerAllImages = [];
+let pickerTopPick = '';
 
 // ─── CONSTANTS ───────────────────────────────────────────────────────
 const DISH_EMO = {breakfast:'🌅',lunch:'☀️',dinner:'🌙',dessert:'🍰',snack:'🍿',soup:'🍲',salad:'🥗',side:'🥘'};
@@ -1299,14 +1396,299 @@ function renumSteps() {
 
 // Photos
 function renderPhotos() {
-  document.getElementById('ed-photos').innerHTML = edPhotos.map((p,i) => `
+  const grid = document.getElementById('ed-photos');
+  if (grid) grid.innerHTML = edPhotos.map((p,i) => `
     <div class="photo-thumb">
       <img src="${p}" alt="">
       <button class="photo-rm" onclick="rmPhoto(${i})">×</button>
     </div>`).join('');
+  const cnt = document.getElementById('ed-photo-count');
+  if (cnt) cnt.textContent = edPhotos.length ? `(${edPhotos.length})` : '';
 }
 
 function rmPhoto(i) { edPhotos.splice(i, 1); renderPhotos(); }
+
+// ─── IMAGE EXTRACTION + PICKER ────────────────────────────────────────
+function extractImagesFromHTML(html, baseUrl) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const imgs = new Set();
+  const SKIP = /\b(icon|logo|avatar|thumb|sprite|pixel|button|badge|1x1|banner|tracking|blank)\b/i;
+
+  // 1. og:image / twitter:image (best quality)
+  for (const m of doc.querySelectorAll('meta[property="og:image"],meta[name="og:image"],meta[property="twitter:image"],meta[name="twitter:image"]')) {
+    const c = m.getAttribute('content');
+    if (c && c.startsWith('http') && !SKIP.test(c)) imgs.add(c);
+  }
+  // 2. JSON-LD image field in recipe schema
+  for (const script of doc.querySelectorAll('script[type="application/ld+json"]')) {
+    try {
+      const root = JSON.parse(script.textContent);
+      for (const node of (root['@graph'] || [root])) {
+        const raw = node.image;
+        if (!raw) continue;
+        for (const u of (Array.isArray(raw) ? raw : [raw])) {
+          const url = typeof u === 'string' ? u : u?.url || u?.contentUrl;
+          if (url && url.startsWith('http') && !SKIP.test(url)) imgs.add(url);
+        }
+      }
+    } catch(e) {}
+  }
+  // 3. <img src> tags
+  for (const el of doc.querySelectorAll('img[src]')) {
+    const src = el.getAttribute('src');
+    if (!src || SKIP.test(src)) continue;
+    try {
+      const abs = new URL(src, baseUrl).href;
+      if (abs.startsWith('http') && /\.(jpe?g|png|webp|gif)/i.test(abs) && !SKIP.test(abs)) imgs.add(abs);
+    } catch(e) {}
+  }
+  return [...imgs].slice(0, 20);
+}
+
+async function ollamaGenerateJSON(prompt, timeoutMs = 55000) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch('/api/ollama/generate', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ model: 'mistral', prompt, stream: false }),
+      signal: ctrl.signal
+    });
+    clearTimeout(timer);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    const raw = data.response || '';
+    const start = raw.indexOf('{');
+    if (start === -1) throw new Error('No JSON');
+    let s = raw.slice(start);
+    let depth = 0, end = -1;
+    for (let i = 0; i < s.length; i++) {
+      if (s[i] === '{') depth++; else if (s[i] === '}') { depth--; if (!depth) { end = i; break; } }
+    }
+    if (end !== -1) s = s.slice(0, end + 1);
+    s = s.replace(/\.\.\.|…/g, '').replace(/,\s*([}\]])/g, '$1');
+    return JSON.parse(s);
+  } catch(e) { clearTimeout(timer); throw e; }
+}
+
+async function downloadImageAsBase64(url) {
+  const blobToB64 = b => new Promise((res, rej) => {
+    const rd = new FileReader(); rd.onload = () => res(rd.result); rd.onerror = rej; rd.readAsDataURL(b);
+  });
+  // Try direct (CDN images often allow CORS)
+  try {
+    const ctrl = new AbortController(); setTimeout(() => ctrl.abort(), 8000);
+    const r = await fetch(url, { signal: ctrl.signal });
+    if (r.ok) { const b = await r.blob(); if (b.type.startsWith('image/') && b.size > 512) return blobToB64(b); }
+  } catch(e) {}
+  // Fallback via corsproxy.io
+  try {
+    const ctrl = new AbortController(); setTimeout(() => ctrl.abort(), 10000);
+    const r = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`, { signal: ctrl.signal });
+    if (r.ok) { const b = await r.blob(); if (b.size > 512) return blobToB64(b); }
+  } catch(e) {}
+  return null;
+}
+
+async function pickImagesFromURL(html, url) {
+  const candidates = extractImagesFromHTML(html, url);
+  if (!candidates.length) return;
+
+  pickerAllImages = []; pickerSelected = new Set(); pickerTopPick = '';
+  document.getElementById('m-image-picker').style.display = 'flex';
+  document.getElementById('picker-body').innerHTML = `
+    <div class="spinner-wrap"><div class="spinner"></div>
+      <p id="picker-status" style="color:var(--muted)">🤖 Mistral is finding food images…</p>
+    </div>`;
+  document.getElementById('picker-confirm-btn').disabled = true;
+
+  let foodImages = candidates;
+  try {
+    const fr = await ollamaGenerateJSON(
+      `Which of these image URLs are food or recipe photos? Exclude logos, icons, ads, people. Reply ONLY valid JSON. No ellipsis.\n{"foodImages":"url1,url2","count":2}\n\nURLs:\n${candidates.slice(0,10).join('\n')}`
+    );
+    const arr = (fr.foodImages || '').split(',').map(s => s.trim()).filter(s => s.startsWith('http'));
+    if (arr.length) foodImages = arr;
+  } catch(e) {}
+
+  let topPick = foodImages[0] || '';
+  let reason = '';
+  if (foodImages.length > 1) {
+    const el = document.getElementById('picker-status');
+    if (el) el.textContent = '🤖 Ranking best food image…';
+    try {
+      const rr = await ollamaGenerateJSON(
+        `Best food image URL for a recipe card? Reply ONLY valid JSON. No ellipsis.\n{"best":"url","reason":"one sentence"}\n\nURLs:\n${foodImages.slice(0,6).join('\n')}`
+      );
+      if (rr.best?.startsWith('http')) { topPick = rr.best; reason = rr.reason || ''; }
+      else {
+        const m = foodImages.find(u => u.split('/').pop() === (rr.best || '').split('/').pop());
+        if (m) { topPick = m; reason = rr.reason || ''; }
+      }
+    } catch(e) {}
+  }
+
+  pickerAllImages = foodImages;
+  pickerTopPick = topPick;
+  pickerSelected = new Set(topPick ? [topPick] : []);
+  renderImagePicker(topPick, foodImages.filter(u => u !== topPick), reason);
+}
+
+function renderImagePicker(topPick, others, reason) {
+  const body = document.getElementById('picker-body');
+  if (!body) return;
+  const total = pickerAllImages.length;
+  let html = `<p style="font-size:.87rem;color:var(--muted);margin-bottom:.8rem">
+    Found <strong>${total}</strong> food image${total !== 1 ? 's' : ''} — click to select, then tap <em>Use Selected</em>.</p>`;
+
+  if (topPick) {
+    const sel = pickerSelected.has(topPick);
+    html += `<div class="ip-section-lbl">⭐ Mistral's Top Pick</div>
+    <div class="ip-top-card${sel?' sel':''}" data-url="${esc(topPick)}" onclick="togglePickerCard(this)">
+      <div class="ip-check">✓</div>
+      <img src="${topPick}" alt="" onerror="this.parentElement.style.display='none'">
+      <div class="ip-top-meta">
+        <span class="ip-top-badge">⭐ Top Pick</span>
+        ${reason ? `<div class="ip-top-reason">💬 ${esc(reason)}</div>` : ''}
+      </div>
+    </div>`;
+  }
+  if (others.length) {
+    html += `<div class="ip-section-lbl">Other Food Images</div><div class="ip-grid">`;
+    for (const u of others.slice(0, 9)) {
+      const sel = pickerSelected.has(u);
+      html += `<div class="ip-img-card${sel?' sel':''}" data-url="${esc(u)}" onclick="togglePickerCard(this)">
+        <div class="ip-check">✓</div>
+        <img src="${u}" alt="" loading="lazy" onerror="this.parentElement.style.display='none'">
+      </div>`;
+    }
+    html += `</div>`;
+  }
+  if (!topPick && !others.length) {
+    html += `<p style="text-align:center;color:var(--muted);padding:1.5rem">No food images could be identified on this page.</p>`;
+  }
+  body.innerHTML = html;
+  updatePickerBtn();
+}
+
+function togglePickerCard(card) {
+  const url = card.dataset.url;
+  if (!url) return;
+  if (pickerSelected.has(url)) pickerSelected.delete(url);
+  else pickerSelected.add(url);
+  card.classList.toggle('sel', pickerSelected.has(url));
+  updatePickerBtn();
+}
+
+function updatePickerBtn() {
+  const btn = document.getElementById('picker-confirm-btn');
+  if (!btn) return;
+  const n = pickerSelected.size;
+  btn.disabled = n === 0;
+  btn.textContent = `✅ Use Selected (${n})`;
+}
+
+async function confirmImagePick() {
+  const btn = document.getElementById('picker-confirm-btn');
+  if (btn) btn.disabled = true;
+  const body = document.getElementById('picker-body');
+  if (body) body.insertAdjacentHTML('beforeend',
+    `<div class="spinner-wrap" style="margin-top:1rem"><div class="spinner"></div>
+     <p id="picker-dl-msg" style="color:var(--muted)">Preparing…</p></div>`);
+
+  const urls = [...pickerSelected];
+  const downloaded = [];
+  for (let i = 0; i < urls.length; i++) {
+    const msg = document.getElementById('picker-dl-msg');
+    if (msg) msg.textContent = `Downloading image ${i+1} of ${urls.length}…`;
+    const b64 = await downloadImageAsBase64(urls[i]);
+    if (b64) downloaded.push(b64);
+    else toast(`⚠️ Image ${i+1} blocked by CORS`, '');
+  }
+
+  closeM('m-image-picker');
+  if (downloaded.length) {
+    edPhotos = [...downloaded, ...edPhotos];
+    renderPhotos();
+    toast(`📸 ${downloaded.length} photo${downloaded.length !== 1 ? 's' : ''} added!`, 'ok');
+  } else {
+    toast('⚠️ Images CORS-blocked — upload manually in Photo Manager', 'err');
+  }
+}
+
+// ─── PHOTO MANAGER ───────────────────────────────────────────────────
+function openPhotoMgr() {
+  document.getElementById('pm-url-row').style.display = 'none';
+  document.getElementById('pm-url-field').value = '';
+  renderPhotoMgr();
+  document.getElementById('m-photo-mgr').style.display = 'flex';
+}
+
+function closePhotoMgr() {
+  closeM('m-photo-mgr');
+  renderPhotos();
+}
+
+function renderPhotoMgr() {
+  const grid = document.getElementById('pm-grid');
+  if (!grid) return;
+  if (!edPhotos.length) {
+    grid.innerHTML = `<div class="pm-empty">No photos yet — add some below!</div>`;
+    return;
+  }
+  grid.innerHTML = edPhotos.map((p, i) => `
+    <div class="pm-card${i === 0 ? ' is-main' : ''}">
+      <div class="pm-thumb">
+        <img src="${p}" alt="">
+        ${i === 0 ? '<span class="pm-main-badge">⭐ Main</span>' : ''}
+      </div>
+      <div class="pm-controls">
+        ${i !== 0 ? `<button class="pm-btn" title="Set as main" onclick="pmSetMain(${i})">⭐</button>` : ''}
+        ${i > 0 ? `<button class="pm-btn" title="Move left" onclick="pmMove(${i},-1)">◀</button>` : ''}
+        ${i < edPhotos.length - 1 ? `<button class="pm-btn" title="Move right" onclick="pmMove(${i},1)">▶</button>` : ''}
+        <button class="pm-btn del" title="Delete" onclick="pmDelete(${i})">🗑️</button>
+      </div>
+    </div>`).join('');
+}
+
+function pmSetMain(i) { const p = edPhotos.splice(i,1)[0]; edPhotos.unshift(p); renderPhotoMgr(); }
+function pmMove(i, d) {
+  const j = i + d;
+  if (j < 0 || j >= edPhotos.length) return;
+  [edPhotos[i], edPhotos[j]] = [edPhotos[j], edPhotos[i]]; renderPhotoMgr();
+}
+function pmDelete(i) { edPhotos.splice(i, 1); renderPhotoMgr(); }
+
+function pmAddFiles(e) {
+  const files = [...e.target.files];
+  Promise.all(files.map(f => new Promise(res => {
+    const rd = new FileReader(); rd.onload = ev => res(ev.target.result); rd.readAsDataURL(f);
+  }))).then(results => { edPhotos = [...edPhotos, ...results]; renderPhotoMgr(); });
+  e.target.value = '';
+}
+
+function togglePMUrl() {
+  const row = document.getElementById('pm-url-row');
+  row.style.display = row.style.display === 'none' ? 'flex' : 'none';
+}
+
+async function pmAddFromURL() {
+  const url = document.getElementById('pm-url-field').value.trim();
+  if (!url) { toast('⚠️ Enter an image URL', 'err'); return; }
+  const addBtn = document.querySelector('#pm-url-row .btn-primary');
+  if (addBtn) { addBtn.disabled = true; addBtn.textContent = '…'; }
+  const b64 = await downloadImageAsBase64(url);
+  if (addBtn) { addBtn.disabled = false; addBtn.textContent = 'Add'; }
+  if (b64) {
+    edPhotos.push(b64);
+    document.getElementById('pm-url-field').value = '';
+    document.getElementById('pm-url-row').style.display = 'none';
+    renderPhotoMgr();
+    toast('📸 Photo added!', 'ok');
+  } else {
+    toast('❌ Could not download — check URL or CORS', 'err');
+  }
+}
 
 function addPhotos(e) {
   const files = [...e.target.files];
@@ -1490,6 +1872,9 @@ async function fetchURL() {
     loadingEl.style.display = 'none';
     openEditor(recipe);
     toast('🔗 Recipe extracted!', 'ok');
+    // Non-blocking: find and rank food images in background
+    const capturedHtml = html;
+    setTimeout(() => pickImagesFromURL(capturedHtml, url).catch(() => {}), 350);
   } catch(e) {
     loadingEl.style.display = 'none';
     toast('⚠️ URL fetch failed — switching to Paste Text', 'err');

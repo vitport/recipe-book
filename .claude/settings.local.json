@@ -10,7 +10,11 @@
       "Bash(npm install *)",
       "Bash(npm start *)",
       "Bash(npx kill-port *)",
-      "Bash(curl -s http://localhost:8080/recipes.json)"
+      "Bash(curl -s http://localhost:8080/recipes.json)",
+      "Bash(git -C /c/Users/Vit/Desktop/recipe-book diff --name-only HEAD)",
+      "Bash(git -C /c/Users/Vit/Desktop/recipe-book status --short)",
+      "Bash(git *)",
+      "Bash(echo \"server.js image-picker refs: $?\")"
     ]
   }
 }

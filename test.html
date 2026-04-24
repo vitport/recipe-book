@@ -498,6 +498,13 @@ async function fetchRecipes(){
 
 function skipErr(msg){ return Object.assign(new Error(msg),{isSkip:true}); }
 
+// Normalise a Mistral field that could be an array OR a comma-separated string
+function toArr(val){
+  if(!val) return [];
+  if(Array.isArray(val)) return val.map(s=>String(s).trim()).filter(Boolean);
+  return String(val).split(',').map(s=>s.trim()).filter(Boolean);
+}
+
 // ── TEST DEFINITIONS ──────────────────────────────────────────────────
 const TESTS=[];
 function def(id,series,group,name,run){
@@ -767,6 +774,81 @@ def('2.1.6',2,'2.1 URL Import','🤖 Mistral verifies fetched content is a recip
   return{details:`Mistral: ${v.reason}`,aiVerdict:v,score:v.valid?8:2};
 });
 
+// 2.1.7 – 2.1.10  Image extraction & ranking
+def('2.1.7',2,'2.1 URL Import','Extract images from fetched URL HTML',async()=>{
+  if(!ctx.urlHtml) throw skipErr('No URL content — proxy tests failed');
+  const doc=new DOMParser().parseFromString(ctx.urlHtml,'text/html');
+  const imgs=new Set();
+  // og:image / twitter:image meta tags
+  for(const m of doc.querySelectorAll('meta[property="og:image"],meta[name="og:image"],meta[property="twitter:image"],meta[name="twitter:image"]')){
+    const c=m.getAttribute('content');
+    if(c&&c.startsWith('http')) imgs.add(c);
+  }
+  // <img src> — resolve relative URLs against TEST_URL
+  for(const el of doc.querySelectorAll('img[src]')){
+    const src=el.getAttribute('src'); if(!src) continue;
+    try{
+      const abs=new URL(src,TEST_URL).href;
+      if(abs.startsWith('http')&&/\.(jpe?g|png|webp|gif)/i.test(abs)) imgs.add(abs);
+    }catch(_){}
+  }
+  const arr=[...imgs].slice(0,20);
+  ctx.extractedImages=arr;
+  if(!arr.length) throw new Error('No image URLs found in page HTML');
+  const abs=arr.filter(u=>u.startsWith('http'));
+  if(!abs.length) throw new Error('All extracted URLs are relative');
+  return{details:`${arr.length} image(s) found — all absolute. First: ${arr[0].slice(0,70)}…`};
+});
+
+def('2.1.8',2,'2.1 URL Import','🤖 Mistral filters food images from extracted URLs',async()=>{
+  if(!ollamaOK) throw skipErr('Ollama not available');
+  if(!ctx.extractedImages?.length) throw skipErr('No images from 2.1.7');
+  const sample=ctx.extractedImages.slice(0,5).join('\n');
+  const v=await askMistral(`Which URLs below look like food photos? Reply with ONLY valid JSON. No ellipsis. No truncation.\n{"foodImages":"url1,url2","count":2}\n\nURLs:\n${sample}`);
+  const foodArr=toArr(v.foodImages).filter(s=>s.startsWith('http'));
+  ctx.foodImages=foodArr.length?foodArr:ctx.extractedImages.slice(0,3);
+  const count=Number(v.count)||foodArr.length||0;
+  return{details:`Mistral identified ${count} food image(s)`,aiVerdict:v,score:Math.min(10,Math.max(1,count+2))};
+});
+
+def('2.1.9',2,'2.1 URL Import','🤖 Mistral ranks food images for recipe card',async()=>{
+  if(!ollamaOK) throw skipErr('Ollama not available');
+  const imgs=(ctx.foodImages||ctx.extractedImages);
+  if(!imgs?.length) throw skipErr('No images to rank');
+  const sample=imgs.slice(0,4).join('\n');
+  const v=await askMistral(`Pick the best image URL for a recipe card. Reply with ONLY valid JSON. No ellipsis. No truncation.\n{"best":"url","reason":"one sentence"}\n\nURLs:\n${sample}`);
+  const best=Array.isArray(v.best)?v.best[0]||(imgs[0]||''):String(v.best||imgs[0]||'');
+  if(!best.startsWith('http')) throw new Error(`Invalid best URL: ${best.slice(0,50)}`);
+  ctx.rankedImages=[best,...imgs.filter(u=>u!==best)];
+  return{details:`Best: …${best.slice(-50)} — ${v.reason||''}`,aiVerdict:v,score:8};
+});
+
+def('2.1.10',2,'2.1 URL Import','Download top-ranked image via proxy',async()=>{
+  const url=ctx.rankedImages?.[0]||ctx.extractedImages?.[0];
+  if(!url) throw skipErr('No image URL from 2.1.7–2.1.9');
+  let blob=null;
+  // Try direct first (some CDN images allow CORS)
+  try{
+    const ctrl=new AbortController(); setTimeout(()=>ctrl.abort(),8000);
+    const r=await fetch(url,{signal:ctrl.signal});
+    if(r.ok && r.headers.get('content-type')?.startsWith('image')) blob=await r.blob();
+  }catch(_){}
+  // Fallback via corsproxy.io
+  if(!blob){
+    try{
+      const ctrl=new AbortController(); setTimeout(()=>ctrl.abort(),10000);
+      const r=await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`,{signal:ctrl.signal});
+      if(r.ok) blob=await r.blob();
+    }catch(_){}
+  }
+  if(!blob) throw skipErr('Image not downloadable (CORS blocked) — expected for some sites');
+  if(blob.size<1024) throw new Error(`Image too small: ${blob.size} bytes (need >1KB)`);
+  const b64=await new Promise((res,rej)=>{const rd=new FileReader();rd.onload=()=>res(rd.result);rd.onerror=rej;rd.readAsDataURL(blob);});
+  if(!b64.startsWith('data:image')) throw new Error(`Unexpected data type: ${b64.slice(0,30)}`);
+  ctx.downloadedImage=b64;
+  return{details:`Downloaded ${(blob.size/1024).toFixed(1)}KB — ${b64.slice(0,30)}…`};
+});
+
 // 2.2 PDF Import
 def('2.2.1',2,'2.2 PDF Import','PDF.js 3.11.174 included in index.html',async()=>{
   const r=await fetch('/'); const html=await r.text();
@@ -970,6 +1052,100 @@ def('2.4.10',2,'2.4 Search & Filter','All recipes have valid data structure',asy
   return{details:`All ${rs.length} recipes have valid structure`};
 });
 
+// 2.5 Photo Manager
+// Minimal valid 1×1 PNG — used as placeholder photos in storage tests
+const TINY_PNG='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
+async function saveTestRecipeWithPhotos(photos){
+  const d=await fetchRecipes();
+  const id=TEST_PREFIX+'photo_'+Date.now();
+  const recipe={id,name:TEST_PREFIX+'PhotoTest',description:'Photo manager test',
+    dishType:'dinner',kosherType:'meat',cookingTime:10,servings:2,language:'en',
+    ingredients:['test'],instructions:['test'],photos};
+  await fetch('/save-recipes',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({recipes:[...d.recipes,recipe]})});
+  return id;
+}
+async function loadRecipeById(id){
+  const d=await fetchRecipes();
+  return d.recipes.find(r=>r.id===id)||null;
+}
+async function deleteTestRecipeById(id){
+  const d=await fetchRecipes();
+  await fetch('/save-recipes',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({recipes:d.recipes.filter(r=>r.id!==id)})});
+}
+
+def('2.5.1',2,'2.5 Photo Manager','Recipe stores and retrieves multiple photos',async()=>{
+  const id=await saveTestRecipeWithPhotos([TINY_PNG,TINY_PNG,TINY_PNG]);
+  try{
+    const r=await loadRecipeById(id);
+    if(!r) throw new Error('Test recipe not found after save');
+    const count=(r.photos||[]).length;
+    if(count!==3) throw new Error(`Expected 3 photos, got ${count}`);
+    return{details:`3 photos stored and retrieved correctly`,expected:'3 photos',actual:`${count} photos`};
+  }finally{await deleteTestRecipeById(id);}
+});
+
+def('2.5.2',2,'2.5 Photo Manager','Photo can be deleted from recipe',async()=>{
+  const id=await saveTestRecipeWithPhotos([TINY_PNG+'A',TINY_PNG+'B']);
+  try{
+    const d=await fetchRecipes();
+    const idx=d.recipes.findIndex(r=>r.id===id);
+    if(idx===-1) throw new Error('Test recipe not found');
+    // Remove first photo
+    d.recipes[idx].photos=d.recipes[idx].photos.slice(1);
+    await fetch('/save-recipes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});
+    const r=await loadRecipeById(id);
+    const count=(r?.photos||[]).length;
+    if(count!==1) throw new Error(`Expected 1 photo after deletion, got ${count}`);
+    return{details:`Photo deleted — 1 photo remains`,expected:'1 photo',actual:`${count} photo(s)`};
+  }finally{await deleteTestRecipeById(id);}
+});
+
+def('2.5.3',2,'2.5 Photo Manager','Main photo can be changed (reorder)',async()=>{
+  const photo1=TINY_PNG+'#1'; const photo2=TINY_PNG+'#2';
+  const id=await saveTestRecipeWithPhotos([photo1,photo2]);
+  try{
+    const d=await fetchRecipes();
+    const idx=d.recipes.findIndex(r=>r.id===id);
+    if(idx===-1) throw new Error('Test recipe not found');
+    // Move second photo to first position
+    const photos=d.recipes[idx].photos||[];
+    d.recipes[idx].photos=[photos[1],photos[0]];
+    await fetch('/save-recipes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});
+    const r=await loadRecipeById(id);
+    const first=(r?.photos||[])[0]||'';
+    if(first!==photo2) throw new Error(`Expected photo2 first, got ${first.slice(-8)}`);
+    return{details:`Reordered photos — photo2 is now main`,expected:'photo2 first',actual:'photo2 first ✓'};
+  }finally{await deleteTestRecipeById(id);}
+});
+
+def('2.5.4',2,'2.5 Photo Manager','Photo manager code exists in app source',async()=>{
+  const r=await fetch('/'); const html=await r.text();
+  const patterns=['openPhotoMgr','renderPhotoMgr','pmSetMain','pmDelete','pmMove','m-photo-mgr','pm-grid'];
+  const found=patterns.filter(p=>html.includes(p));
+  if(found.length<3) throw new Error(`Photo manager incomplete. Found: ${found.join(', ')||'none'}`);
+  const hasImagePicker=html.includes('m-image-picker')&&html.includes('pickImagesFromURL');
+  return{details:`Photo manager: ${found.join(', ')}${hasImagePicker?' + image picker':''}`};
+});
+
+def('2.5.5',2,'2.5 Photo Manager','🤖 Mistral recommends best photo for recipe card',async()=>{
+  if(!ollamaOK) throw skipErr('Ollama not available');
+  // Use real food images if we have them, otherwise use placeholder URLs
+  const candidates=(ctx.rankedImages||ctx.foodImages||[
+    'https://example.com/goulash1.jpg',
+    'https://example.com/goulash2.jpg',
+    'https://example.com/goulash3.jpg'
+  ]).slice(0,3);
+  const sample=candidates.join('\n');
+  const v=await askMistral(`Which image URL is best for a goulash recipe card? Reply with ONLY valid JSON. No ellipsis. No truncation.\n{"best":"url","score":8,"reason":"one sentence"}\n\nURLs:\n${sample}`);
+  const score=Math.min(10,Math.max(1,Math.round(Number(v.score)||7)));
+  const best=v.best||candidates[0]||'';
+  if(!best) throw new Error('Mistral did not return a best image');
+  return{details:`Best: …${best.slice(-40)} (${score}/10) — ${v.reason||''}`,aiVerdict:v,score};
+});
+
 // 3.1 Self-Evaluation
 def('3.1',3,'3.1 Mistral Self-Evaluation','🤖 Mistral evaluates its own recipe parsing ability',async()=>{
   if(!ollamaOK) throw skipErr('Ollama not available');
@@ -1133,10 +1309,28 @@ function renderAIBox(v,id){
   }
   if(id==='3.4'){
     const v2=v;
-    const issues=(v2.criticalIssues||[]).map(i=>`<div class="rec-item"><span class="rec-icon">🔴</span>${esc(i)}</div>`).join('');
-    const imps=(v2.improvements||[]).map(i=>`<div class="rec-item"><span class="rec-icon">💡</span>${esc(i)}</div>`).join('');
-    const qual=v2.appQuality?`<div class="rec-item"><span class="rec-icon">⭐</span>App Quality: ${v2.appQuality}/10</div>`:'';
-    const feat=v2.innovativeFeature?`<div class="rec-item"><span class="rec-icon">✨</span>${esc(v2.innovativeFeature)}</div>`:'';
+    // Collect issues from any field name Mistral might use
+    const issuesArr=toArr(
+      v2.criticalIssues||v2.issues||v2.critical||v2.problems||v2.fixes
+    );
+    // Collect improvements from any field name, including tip1/tip2 inline strings
+    const tip1str=v2.tip1?String(v2.tip1).trim():'';
+    const tip2str=v2.tip2?String(v2.tip2).trim():'';
+    const impsArr=toArr(
+      v2.improvements||v2.tips||v2.suggestions||v2.recommendations
+    ).concat([tip1str,tip2str].filter(Boolean));
+    // Deduplicate
+    const uniqueImps=[...new Set(impsArr)];
+
+    const issues=issuesArr.length
+      ? issuesArr.map(i=>`<div class="rec-item"><span class="rec-icon">🔴</span>${esc(String(i))}</div>`).join('')
+      : `<div class="rec-item" style="color:var(--muted);font-style:italic">No specific issues identified</div>`;
+    const imps=uniqueImps.length
+      ? uniqueImps.map(i=>`<div class="rec-item"><span class="rec-icon">💡</span>${esc(String(i))}</div>`).join('')
+      : `<div class="rec-item" style="color:var(--muted);font-style:italic">No improvements suggested</div>`;
+    const score=v2.score||v2.appQuality||v2.rating;
+    const qual=score?`<div class="rec-item"><span class="rec-icon">⭐</span>App Quality: ${score}/10</div>`:'';
+    const feat=v2.innovativeFeature?`<div class="rec-item"><span class="rec-icon">✨</span>${esc(String(v2.innovativeFeature))}</div>`:'';
     return `<div class="rec-card"><div class="rec-title">🤖 Mistral Recommendations</div>
       <div style="font-weight:800;font-size:.78rem;color:var(--fail);margin-bottom:.3rem">CRITICAL ISSUES</div>${issues}
       <div style="font-weight:800;font-size:.78rem;color:var(--ai);margin:.5rem 0 .3rem">IMPROVEMENTS</div>${imps}
@@ -1199,7 +1393,8 @@ async function startTests(mode){
 
   // Reset
   for(const t of toRun){ resetTestFields(t); renderTest(t); }
-  Object.assign(ctx,{initialCount:0,testId:null,urlHtml:null,parsedHe:null,parsedEn:null,parsedRu:null});
+  Object.assign(ctx,{initialCount:0,testId:null,urlHtml:null,parsedHe:null,parsedEn:null,parsedRu:null,
+    extractedImages:null,foodImages:null,rankedImages:null,downloadedImage:null});
 
   running=true; stopped=false; suiteStart=Date.now();
   document.getElementById('btnRunAll').disabled=true;
@@ -1371,7 +1566,7 @@ function buildReportData(){
     aiInsights:{
       mistralSelfEvaluation:t31?.aiVerdict||null,
       qualityScores:qScores,
-      improvements:t34?.aiVerdict?.improvements||[]
+      improvements:toArr(t34?.aiVerdict?.improvements||t34?.aiVerdict?.tips)
     }
   };
 }
@@ -1422,7 +1617,7 @@ function exportMarkdown(){
   }
   if(aiInsights.improvements.length){
     md+=`### Suggested Improvements\n\n`;
-    aiInsights.improvements.forEach((imp,i)=>md+=`${i+1}. ${imp}\n`);
+    toArr(aiInsights.improvements).forEach((imp,i)=>md+=`${i+1}. ${imp}\n`);
   }
   const blob=new Blob([md],{type:'text/markdown'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob);

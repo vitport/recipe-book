@@ -1,0 +1,52 @@
+# Recipe Book Project — Zeev & Vitaly
+
+## Stack
+- Frontend: HTML/CSS/JavaScript (single file)
+- Backend: Node.js + Express (server.js)
+- Database: recipes.json (flat file)
+- AI: Ollama + Mistral 7B (local)
+- Testing: test.html (66+ AI-powered tests)
+
+## Rules
+1. ⚠️ Update tests first before every feature
+2. 🤖 Ask about LLM usage before every feature
+3. 📁 Specify files in every Claude Code prompt
+4. 📋 Include full file paths in verification reports
+
+## File Locations
+C:\Users\Vit\Desktop\recipe-book\index.html
+C:\Users\Vit\Desktop\recipe-book\server.js
+C:\Users\Vit\Desktop\recipe-book\test.html
+C:\Users\Vit\Desktop\recipe-book\recipes.json
+C:\Users\Vit\Desktop\recipe-book\package.json
+
+## Current Features
+- Multilingual recipe book (Hebrew/English/Russian)
+- RTL support for Hebrew
+- AI parsing with Mistral (paste text, URL, PDF, photo)
+- Image picker with Mistral food detection and ranking
+- Photo manager popup (add/delete/reorder photos)
+- Node.js Express server with auto-save
+- Network sharing (http://192.168.1.2:8080)
+- Sorting, filtering, search
+- PDF import and export
+- 66+ AI-powered tests with 100% pass rate
+- Favicon, logging, export reports
+
+## Planned Features
+- Image picker improvements (CORS fix, memory release)
+- Multi-user support
+- Google/Apple/Firebase authentication
+- Deploy to internet
+
+## Starting the App
+cd C:\Users\Vit\Desktop\recipe-book
+npm start
+Then open: http://localhost:8080
+
+## Running Tests
+http://localhost:8080/test.html
+Click "Run All Tests"
+
+## GitHub
+github.com/vitport/recipe-book

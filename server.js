@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const http = require('http');
+const https = require('https');
 
 const app = express();
 const PORT = 8080;
@@ -84,6 +85,67 @@ app.get('/api/ollama/status', (req, res) => {
 
 app.post('/api/ollama/generate', (req, res) => {
   ollamaRequest('POST', '/api/generate', req.body, res);
+});
+
+app.post('/api/ollama/release', (req, res) => {
+  ollamaRequest('POST', '/api/generate', { model: 'mistral', keep_alive: 0 }, res);
+});
+
+// ── IMAGE PROXY ───────────────────────────────────────────────────────
+// Fetches external images server-side, bypassing browser CORS restrictions.
+app.get('/api/proxy-image', (req, res) => {
+  const url = req.query.url;
+  if (!url || !/^https?:\/\//i.test(url))
+    return res.status(400).json({ error: 'Invalid or missing url parameter' });
+
+  const MAX_SIZE = 5 * 1024 * 1024; // 5 MB
+  const mod = url.startsWith('https') ? https : http;
+  let responded = false;
+
+  const timer = setTimeout(() => {
+    if (!responded) { responded = true; proxyReq.destroy(); res.status(504).json({ error: 'Image fetch timed out' }); }
+  }, 10000);
+
+  const proxyReq = mod.get(url, proxyRes => {
+    if (responded) return;
+    // Follow a single redirect
+    if ((proxyRes.statusCode === 301 || proxyRes.statusCode === 302) && proxyRes.headers.location) {
+      clearTimeout(timer);
+      return res.redirect(`/api/proxy-image?url=${encodeURIComponent(proxyRes.headers.location)}`);
+    }
+    if (proxyRes.statusCode !== 200) {
+      clearTimeout(timer); responded = true;
+      return res.status(proxyRes.statusCode).json({ error: `Upstream HTTP ${proxyRes.statusCode}` });
+    }
+    const mime = (proxyRes.headers['content-type'] || 'image/jpeg').split(';')[0].trim();
+    if (!mime.startsWith('image/')) {
+      clearTimeout(timer); responded = true;
+      return res.status(415).json({ error: 'URL does not point to an image' });
+    }
+    const chunks = [];
+    let size = 0;
+    proxyRes.on('data', chunk => {
+      size += chunk.length;
+      if (size > MAX_SIZE) {
+        clearTimeout(timer); responded = true;
+        proxyReq.destroy();
+        return res.status(413).json({ error: 'Image exceeds 5 MB limit' });
+      }
+      chunks.push(chunk);
+    });
+    proxyRes.on('end', () => {
+      if (responded) return;
+      clearTimeout(timer); responded = true;
+      const buf = Buffer.concat(chunks);
+      res.json({ data: `data:${mime};base64,${buf.toString('base64')}`, mimeType: mime, size: buf.length });
+    });
+  });
+
+  proxyReq.on('error', err => {
+    if (responded) return;
+    clearTimeout(timer); responded = true;
+    res.status(502).json({ error: err.message });
+  });
 });
 
 app.listen(PORT, '0.0.0.0', () => {

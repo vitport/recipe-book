@@ -418,6 +418,29 @@ mark.hl{background:#FFE082;border-radius:3px;padding:0 2px;}
   display:flex;gap:.55rem;flex-wrap:wrap;align-items:flex-start;}
 .pm-url-row{display:flex;gap:.45rem;width:100%;margin-top:.4rem;}
 .pm-url-row .finput{flex:1;}
+
+/* ── DEBUG PANEL ── */
+#dbg-panel{display:none;position:fixed;bottom:0;left:0;right:0;height:30vh;min-height:40px;
+  background:#1a1a2e;border-top:none;flex-direction:column;z-index:9999;
+  font-family:'Courier New',Courier,monospace;}
+#dbg-handle{height:8px;background:#2a2a3e;cursor:ns-resize;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  border-top:2px solid var(--primary);transition:background .15s;}
+#dbg-handle:hover{background:#3a3a5e;}
+#dbg-handle-grip{color:#555;font-size:.55rem;letter-spacing:2px;user-select:none;line-height:1;
+  pointer-events:none;}
+#dbg-hdr{display:flex;align-items:center;justify-content:space-between;
+  padding:.38rem .8rem;background:#12122a;border-bottom:1px solid #2a2a4e;flex-shrink:0;}
+#dbg-hdr-title{color:var(--primary);font-weight:900;font-size:.87rem;letter-spacing:.02em;}
+#dbg-hdr-btns{display:flex;gap:.45rem;}
+.dbg-btn{background:none;border:1px solid #3a3a5e;color:#888;border-radius:5px;
+  cursor:pointer;font-family:inherit;font-size:.74rem;padding:.2rem .55rem;transition:background .18s;}
+.dbg-btn:hover{background:#2a2a4e;color:#fff;border-color:#FF6B35;}
+#dbg-log{flex:1;overflow-y:auto;padding:.15rem 0;}
+#dbg-log::-webkit-scrollbar{width:5px;}
+#dbg-log::-webkit-scrollbar-thumb{background:#3a3a5e;border-radius:3px;}
+.dbg-entry{padding:.18rem .75rem;border-bottom:1px solid #1e1e38;font-size:.74rem;
+  line-height:1.45;white-space:pre-wrap;word-break:break-all;}
 </style>
 </head>
 <body>
@@ -813,9 +836,91 @@ mark.hl{background:#FFE082;border-radius:3px;padding:0 2px;}
 <div id="toast-box"></div>
 <input type="file" id="inp-json" accept=".json" style="display:none" onchange="handleJSON(event)">
 
+<!-- ═══════════════ DEBUG PANEL ═══════════════ -->
+<div id="dbg-panel">
+  <div id="dbg-handle" onmousedown="dbgDragStart(event)">
+    <span id="dbg-handle-grip">━━━</span>
+  </div>
+  <div id="dbg-hdr">
+    <span id="dbg-hdr-title">🐛 Debug Log</span>
+    <div id="dbg-hdr-btns">
+      <button class="dbg-btn" onclick="document.getElementById('dbg-log').innerHTML=''">🗑️ Clear</button>
+      <button class="dbg-btn" onclick="exitDebugMode()">✕ Exit Debug Mode</button>
+    </div>
+  </div>
+  <div id="dbg-log"></div>
+</div>
+
 <!-- ═══════════════ JAVASCRIPT ═══════════════ -->
 <script>
 'use strict';
+
+// ─── DEBUG MODE ──────────────────────────────────────────────────────
+const DEBUG = new URLSearchParams(location.search).has('debug');
+const _dbgEsc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function dbg(msg, level='LOG') {
+  const panel = document.getElementById('dbg-log');
+  if (!panel) return;
+  const ts = new Date().toLocaleTimeString('en-US', {hour12:false});
+  const clr = level==='ERROR'?'#FF6666':level==='WARN'?'#FFD700':'#88FF88';
+  const el = document.createElement('div');
+  el.className = 'dbg-entry';
+  el.innerHTML = `<span style="color:#555">${ts}</span> ` +
+    `<span style="background:${clr};color:#000;padding:.04rem .28rem;border-radius:2px;font-size:.64rem;font-weight:900">${level}</span> ` +
+    `<span style="color:${clr}">${_dbgEsc(String(msg))}</span>`;
+  panel.appendChild(el);
+  panel.scrollTop = panel.scrollHeight;
+}
+if (DEBUG) {
+  const _c = { log: console.log.bind(console), warn: console.warn.bind(console), error: console.error.bind(console) };
+  console.log   = (m, ...a) => { _c.log(m, ...a);   dbg(m, 'LOG');   };
+  console.warn  = (m, ...a) => { _c.warn(m, ...a);  dbg(m, 'WARN');  };
+  console.error = (m, ...a) => { _c.error(m, ...a); dbg(m, 'ERROR'); };
+  // Restore saved height or fall back to 30vh
+  const savedH = localStorage.getItem('dbg-panel-height');
+  const initH  = savedH || '30vh';
+  const panel  = document.getElementById('dbg-panel');
+  panel.style.display = 'flex';
+  panel.style.height  = initH;
+  document.body.style.paddingBottom = initH;
+}
+function exitDebugMode() {
+  const u = new URL(location.href);
+  u.searchParams.delete('debug');
+  location.replace(u.toString());
+}
+
+// ─── DEBUG PANEL DRAG-TO-RESIZE ──────────────────────────────────────
+let _dbgDragging = false;
+function dbgDragStart(e) {
+  if (!DEBUG) return;
+  e.preventDefault();
+  _dbgDragging = true;
+  document.body.style.userSelect = 'none';
+  document.addEventListener('mousemove', _dbgDragMove);
+  document.addEventListener('mouseup',   _dbgDragEnd);
+}
+function _dbgDragMove(e) {
+  if (!_dbgDragging) return;
+  const panel = document.getElementById('dbg-panel');
+  // Height = distance from cursor to bottom of viewport
+  const newH = Math.min(
+    Math.max(window.innerHeight - e.clientY, 40),   // min 40px
+    Math.round(window.innerHeight * 0.80)            // max 80vh
+  );
+  panel.style.height = newH + 'px';
+  document.body.style.paddingBottom = newH + 'px';
+}
+function _dbgDragEnd() {
+  if (!_dbgDragging) return;
+  _dbgDragging = false;
+  document.body.style.userSelect = '';
+  document.removeEventListener('mousemove', _dbgDragMove);
+  document.removeEventListener('mouseup',   _dbgDragEnd);
+  // Persist new height
+  const h = document.getElementById('dbg-panel').style.height;
+  if (h) localStorage.setItem('dbg-panel-height', h);
+}
 
 // PDF.js worker — set immediately and also lazily in handlePDF for reliability
 const PDF_WORKER_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -876,6 +981,7 @@ async function loadJSON() {
 }
 
 async function syncToServer() {
+  console.log(`Syncing ${recipes.length} recipe(s) to server…`);
   try {
     const res = await fetch('/save-recipes', {
       method: 'POST',
@@ -883,8 +989,10 @@ async function syncToServer() {
       body: JSON.stringify({ recipes })
     });
     if (!res.ok) throw new Error('HTTP ' + res.status);
+    console.log('Server sync OK');
     toast('Saved ✓', 'ok');
   } catch(e) {
+    console.error('Server sync failed: ' + e.message);
     toast('Save failed — offline mode', 'err');
   }
 }
@@ -1114,6 +1222,7 @@ function particle(x, y) {
 
 // ─── FILTERS & SEARCH ────────────────────────────────────────────────
 function setF(type, val, el) {
+  console.log(`Filter: ${type} = "${val}"`);
   flt[type] = val;
   document.querySelectorAll(`#${type==='dish'?'dish':'kosher'}-pills .pill`).forEach(p => p.classList.remove('on'));
   el.classList.add('on');
@@ -1147,6 +1256,7 @@ function hl(text, query) {
 
 // ─── SORT ────────────────────────────────────────────────────────────
 function setSort(val) {
+  console.log(`Sort: ${val}`);
   sortBy = val;
   localStorage.setItem('rb_sort', val);
   render();
@@ -1472,26 +1582,46 @@ async function ollamaGenerateJSON(prompt, timeoutMs = 55000) {
 }
 
 async function downloadImageAsBase64(url) {
+  console.log('Downloading: ' + url.slice(0, 80));
   const blobToB64 = b => new Promise((res, rej) => {
     const rd = new FileReader(); rd.onload = () => res(rd.result); rd.onerror = rej; rd.readAsDataURL(b);
   });
-  // Try direct (CDN images often allow CORS)
+  // Step 1: direct fetch (works for CDN images with CORS headers)
   try {
     const ctrl = new AbortController(); setTimeout(() => ctrl.abort(), 8000);
     const r = await fetch(url, { signal: ctrl.signal });
     if (r.ok) { const b = await r.blob(); if (b.type.startsWith('image/') && b.size > 512) return blobToB64(b); }
   } catch(e) {}
-  // Fallback via corsproxy.io
+  // Step 2: server-side proxy (bypasses CORS — no external dependency)
+  try {
+    const ctrl = new AbortController(); setTimeout(() => ctrl.abort(), 12000);
+    const r = await fetch(`/api/proxy-image?url=${encodeURIComponent(url)}`, { signal: ctrl.signal });
+    if (r.ok) {
+      const d = await r.json();
+      if (d.data?.startsWith('data:image')) { console.log('Image downloaded via server proxy ✓ (' + (d.size||'?') + ' bytes)'); return d.data; }
+    }
+  } catch(e) {}
+  // Step 3: corsproxy.io as last resort
   try {
     const ctrl = new AbortController(); setTimeout(() => ctrl.abort(), 10000);
     const r = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`, { signal: ctrl.signal });
-    if (r.ok) { const b = await r.blob(); if (b.size > 512) return blobToB64(b); }
+    if (r.ok) { const b = await r.blob(); if (b.size > 512) { console.log('Image via corsproxy.io ✓'); return blobToB64(b); } }
   } catch(e) {}
+  console.warn('Image download failed (all methods): ' + url.slice(0, 60));
   return null;
+}
+
+async function releaseOllama() {
+  try {
+    const el = document.getElementById('picker-status');
+    if (el) el.textContent = '🧹 Freeing AI memory…';
+    await fetch('/api/ollama/release', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+  } catch(e) {}
 }
 
 async function pickImagesFromURL(html, url) {
   const candidates = extractImagesFromHTML(html, url);
+  console.log(`Image picker: ${candidates.length} candidate(s) found`);
   if (!candidates.length) return;
 
   pickerAllImages = []; pickerSelected = new Set(); pickerTopPick = '';
@@ -1510,6 +1640,7 @@ async function pickImagesFromURL(html, url) {
     const arr = (fr.foodImages || '').split(',').map(s => s.trim()).filter(s => s.startsWith('http'));
     if (arr.length) foodImages = arr;
   } catch(e) {}
+  console.log(`Image picker: ${foodImages.length} food image(s) after Mistral filter`);
 
   let topPick = foodImages[0] || '';
   let reason = '';
@@ -1527,6 +1658,10 @@ async function pickImagesFromURL(html, url) {
       }
     } catch(e) {}
   }
+
+  console.log(`Image picker: top pick = ${topPick.slice(0,80)}`);
+  // Release Ollama from RAM now that image analysis is done
+  await releaseOllama();
 
   pickerAllImages = foodImages;
   pickerTopPick = topPick;
@@ -1602,8 +1737,13 @@ async function confirmImagePick() {
     const msg = document.getElementById('picker-dl-msg');
     if (msg) msg.textContent = `Downloading image ${i+1} of ${urls.length}…`;
     const b64 = await downloadImageAsBase64(urls[i]);
-    if (b64) downloaded.push(b64);
-    else toast(`⚠️ Image ${i+1} blocked by CORS`, '');
+    if (b64) {
+      downloaded.push(b64);
+      if (msg) msg.textContent = `Image ${i+1} of ${urls.length} downloaded ✓`;
+    } else {
+      if (msg) msg.textContent = `Image ${i+1} of ${urls.length} — could not download, skipped`;
+      toast(`⚠️ Image ${i+1}: Could not download image — skipped`, '');
+    }
   }
 
   closeM('m-image-picker');
@@ -1612,7 +1752,7 @@ async function confirmImagePick() {
     renderPhotos();
     toast(`📸 ${downloaded.length} photo${downloaded.length !== 1 ? 's' : ''} added!`, 'ok');
   } else {
-    toast('⚠️ Images CORS-blocked — upload manually in Photo Manager', 'err');
+    toast('⚠️ Could not download images — add manually in Photo Manager', 'err');
   }
 }
 
@@ -1763,9 +1903,11 @@ function saveRecipe() {
     createdAt: editId ? (recipes.find(x=>x.id===editId)?.createdAt || new Date().toISOString()) : new Date().toISOString(),
   };
 
+  const wasEdit = !!editId;
   if (editId) { const i = recipes.findIndex(x=>x.id===editId); if (i>=0) recipes[i]=r; }
   else recipes.unshift(r);
 
+  console.log(`Recipe ${wasEdit ? 'updated' : 'created'}: "${r.name}"`);
   persist(); closeEditor(); render(); updateStats(); syncToServer();
   toast(`${dishEmo(r.dishType)} Recipe saved!`, 'ok');
 
@@ -1786,7 +1928,9 @@ function delR(id) {
 }
 
 function confirmDel() {
+  const delName = recipes.find(x=>x.id===delId)?.name || delId;
   recipes = recipes.filter(x=>x.id!==delId);
+  console.log(`Recipe deleted: "${delName}"`);
   persist(); render(); updateStats(); closeM('m-confirm'); syncToServer();
   toast('🗑️ Recipe deleted');
   delId = null;
@@ -1819,6 +1963,7 @@ function switchTab(btn, paneId) {
 async function fetchURL() {
   const url = document.getElementById('url-in').value.trim();
   if (!url) { toast('⚠️ Enter a URL', 'err'); return; }
+  console.log('URL import started: ' + url);
   const loadingEl = document.getElementById('url-loading');
   const loadingMsg = document.getElementById('url-loading-msg');
   loadingEl.style.display = 'block';
@@ -1870,6 +2015,7 @@ async function fetchURL() {
       recipe = parseHTML(html, url);
     }
     loadingEl.style.display = 'none';
+    console.log(`URL import complete: "${recipe.name}"`);
     openEditor(recipe);
     toast('🔗 Recipe extracted!', 'ok');
     // Non-blocking: find and rank food images in background
@@ -1971,6 +2117,7 @@ function parseText(text) {
 
 // ─── OLLAMA AI PARSING ───────────────────────────────────────────────
 async function ollamaParseRecipe(text) {
+  console.log('AI parsing started…');
   const prompt = `Extract recipe information from the following text and return ONLY a JSON object with these fields:
 {
   "name": "string",
@@ -2000,6 +2147,7 @@ Text: ${text}`;
     const jsonMatch = (data.response || '').match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('No JSON in Ollama response');
     const p = JSON.parse(jsonMatch[0]);
+    console.log(`AI parsing complete: "${p.name || '(unnamed)'}"`);
     return {
       name: p.name || '',
       description: p.description || '',
@@ -2012,6 +2160,7 @@ Text: ${text}`;
       language: p.language || detectLang(p.name || ''),
     };
   } catch(e) {
+    console.error('AI parsing failed: ' + e.message);
     clearTimeout(timer);
     throw e;
   }
@@ -2019,6 +2168,7 @@ Text: ${text}`;
 
 // ─── OLLAMA URL PARSER ───────────────────────────────────────────────
 async function ollamaParseURL(text, url) {
+  console.log('AI URL parsing started…');
   const prompt = `This is text extracted from a recipe webpage. It may contain navigation menus, advertisements, cookie notices, social media buttons, footer links and other non-recipe content — ignore all of that completely.
 
 Find and extract ONLY the actual recipe. Return ONLY a JSON object with these exact fields:
@@ -2052,6 +2202,7 @@ ${text}`;
     const jsonMatch = (data.response || '').match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('No JSON in Ollama response');
     const p = JSON.parse(jsonMatch[0]);
+    console.log(`AI URL parsing complete: "${p.name || '(unnamed)'}"`);
     return {
       name: p.name || '',
       description: p.description || '',
@@ -2065,6 +2216,7 @@ ${text}`;
       sourceUrl: url,
     };
   } catch(e) {
+    console.error('AI URL parsing failed: ' + e.message);
     clearTimeout(timer);
     throw e;
   }
@@ -2472,6 +2624,7 @@ async function init() {
   setupDZ('dz-file', handleFile, ['text/']);
   setupDZ('dz-photo', runOCR, ['image/']);
   setupDZ('dz-pdf', handlePDF, ['application/pdf']);
+  console.log(`🍳 App initialized — ${recipes.length} recipe(s) loaded`);
 }
 
 init();

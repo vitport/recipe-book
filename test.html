@@ -560,6 +560,20 @@ def('1.1.6',1,'1.1 Server Tests','Node.js Express server is running',async()=>{
   return{details:`Express running — X-Powered-By: ${pw}`};
 });
 
+def('1.1.7',1,'1.1 Server Tests','GET /api/fetch-url proxies external URLs',async()=>{
+  const t=Date.now();
+  const r=await fetch(`/api/fetch-url?url=${encodeURIComponent('https://www.google.com')}`);
+  const ms=Date.now()-t;
+  if(!r.ok) throw new Error(`HTTP ${r.status}`);
+  const d=await r.json();
+  if(d.error) throw new Error(`Server error: ${d.error}`);
+  if(!d.html) throw new Error('Response missing html field');
+  if(d.html.length<1000) throw new Error(`HTML too short: ${d.html.length} chars`);
+  const hasDoc=d.html.includes('<html')||d.html.includes('<!DOCTYPE')||d.html.includes('<!doctype');
+  if(!hasDoc) throw new Error('Response does not look like an HTML document');
+  return{details:`Fetched ${d.html.length.toLocaleString()} chars in ${ms}ms`};
+});
+
 // 1.2 Libraries
 def('1.2.1',1,'1.2 Library Tests','PDF.js 3.11.174 CDN reachable',async()=>{
   const t=Date.now();

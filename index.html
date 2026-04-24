@@ -1970,20 +1970,38 @@ async function fetchURL() {
 
   let html = null;
 
-  // Try corsproxy.io first (returns HTML directly)
+  // Priority 1: our server proxy (browser User-Agent, no CORS)
   try {
-    loadingMsg.textContent = 'Fetching…';
+    loadingMsg.textContent = 'Fetching via our server proxy…';
+    console.log('Fetching via our server proxy…');
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 12000);
-    const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`, { signal: ctrl.signal });
+    const timer = setTimeout(() => ctrl.abort(), 17000);
+    const res = await fetch(`/api/fetch-url?url=${encodeURIComponent(url)}`, { signal: ctrl.signal });
     clearTimeout(timer);
-    if (res.ok) html = await res.text();
+    if (res.ok) {
+      const d = await res.json();
+      if (d.html) html = d.html;
+    }
   } catch(e) {}
 
-  // Fallback: thingproxy.freeboard.io (returns HTML directly)
+  // Priority 2: corsproxy.io fallback
   if (!html) {
     try {
-      loadingMsg.textContent = 'Trying alternative proxy…';
+      loadingMsg.textContent = 'Fallback: trying corsproxy.io…';
+      console.log('Fallback: trying corsproxy.io…');
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 12000);
+      const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`, { signal: ctrl.signal });
+      clearTimeout(timer);
+      if (res.ok) html = await res.text();
+    } catch(e) {}
+  }
+
+  // Priority 3: thingproxy as last resort
+  if (!html) {
+    try {
+      loadingMsg.textContent = 'Last resort: trying thingproxy…';
+      console.log('Last resort: trying thingproxy…');
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), 12000);
       const res = await fetch(`https://thingproxy.freeboard.io/fetch/${url}`, { signal: ctrl.signal });
@@ -2005,9 +2023,79 @@ async function fetchURL() {
 
   try {
     const doc = new DOMParser().parseFromString(html, 'text/html');
-    const rawText = (doc.body.innerText || doc.body.textContent || '').slice(0, 15000);
+    let recipe = null;
+
+    // ═══ SESSION 6 OPTIMIZATION: Schema.org JSON-LD extraction ═══
+    // Reads structured recipe data directly from HTML — no Mistral needed
+    // Rollback: delete from here to "END SESSION 6 STEP 1"
+    // ── Step 1: Schema.org JSON-LD ── instant, no AI ──────────────────
+    loadingMsg.textContent = '🔍 Looking for recipe data…';
+    for (const script of doc.querySelectorAll('script[type="application/ld+json"]')) {
+      try {
+        const data = JSON.parse(script.textContent);
+        for (const node of (Array.isArray(data)?data:[data]).flatMap(d=>d['@graph']||[d])) {
+          const t = node['@type'];
+          if (t === 'Recipe' || (Array.isArray(t) && t.includes('Recipe'))) {
+            const ings  = (node.recipeIngredient||[]).map(i => typeof i==='string'?i:JSON.stringify(i));
+            const steps = (node.recipeInstructions||[]).map(s => typeof s==='string'?s:(s.text||s.name||'')).filter(Boolean);
+            if (ings.length && steps.length) {
+              recipe = { name:node.name||'', description:node.description||'',
+                cookingTime:parseDur(node.cookTime||node.totalTime), servings:parseInt(node.recipeYield)||0,
+                ingredients:ings, instructions:steps, sourceUrl:url, language:detectLang(node.name||'') };
+              break;
+            }
+          }
+        }
+        if (recipe) break;
+      } catch(e) {}
+    }
+    if (recipe) {
+      console.log(`⚡ JSON-LD recipe found: "${recipe.name}" — skipped Mistral`);
+      loadingEl.style.display = 'none';
+      openEditor(recipe);
+      toast('⚡ Recipe extracted instantly from page data!', 'ok');
+      setTimeout(() => pickImagesFromURL(html, url).catch(()=>{}), 350);
+      return;
+    }
+    // END SESSION 6 STEP 1
+
+    // ═══ SESSION 6 OPTIMIZATION: HTML microdata/class extraction ═══
+    // Extracts ingredients/instructions from HTML recipe elements
+    // Rollback: delete from here to "END SESSION 6 STEP 2"
+    // ── Step 2: HTML microdata / recipe-class elements ─────────────────
+    const ingEls  = [...doc.querySelectorAll('[itemprop="ingredients"],[class*="ingredient"]')];
+    const stepEls = [...doc.querySelectorAll('[itemprop="recipeInstructions"],[class*="instruction"],[class*="direction"],[class*="step"]')];
+    const nameEl  = doc.querySelector('[itemprop="name"],h1');
+    if (ingEls.length >= 2 && stepEls.length >= 1) {
+      const ings  = [...new Set(ingEls.map(el=>el.textContent.trim()).filter(Boolean))];
+      const steps = [...new Set(stepEls.map(el=>el.textContent.trim()).filter(Boolean))];
+      const name  = nameEl?.textContent?.trim() || doc.title || '';
+      if (ings.length && steps.length) {
+        recipe = { name, description:'', ingredients:ings, instructions:steps,
+          sourceUrl:url, language:detectLang(name) };
+        console.log(`📋 HTML microdata: "${name}" — ${ings.length} ingredients, ${steps.length} steps`);
+        loadingEl.style.display = 'none';
+        openEditor(recipe);
+        toast('📋 Recipe extracted from page structure!', 'ok');
+        setTimeout(() => pickImagesFromURL(html, url).catch(()=>{}), 350);
+        return;
+      }
+    }
+    // END SESSION 6 STEP 2
+
+    // ═══ SESSION 6 OPTIMIZATION: Cleaned text → Mistral (6000 chars) ═══
+    // Was: raw 15000 chars. Now: noise-stripped, focused, 6000 chars
+    // Rollback: replace with → rawText = doc.body.innerText.slice(0,15000)
+    // ── Step 3: Mistral AI fallback (6000 chars) ───────────────────────
+    for (const sel of ['nav','header','footer','script','style','iframe',
+      '[class*="menu"],[class*="sidebar"],[class*="comment"],[class*="social"]',
+      '[class*="share"],[class*="ad"],[class*="cookie"],[class*="popup"],[class*="newsletter"]']) {
+      doc.querySelectorAll(sel).forEach(el => el.remove());
+    }
+    const focusEl = doc.querySelector('article,[class*="recipe"],[class*="content"],main');
+    const rawText = ((focusEl||doc.body)?.innerText || (focusEl||doc.body)?.textContent || '').slice(0, 6000);
+    console.log(`Sending ${rawText.length} chars to Mistral…`);
     loadingMsg.textContent = '🤖 AI is parsing your recipe…';
-    let recipe;
     try {
       recipe = await ollamaParseURL(rawText, url);
     } catch(aiErr) {
@@ -2018,9 +2106,8 @@ async function fetchURL() {
     console.log(`URL import complete: "${recipe.name}"`);
     openEditor(recipe);
     toast('🔗 Recipe extracted!', 'ok');
-    // Non-blocking: find and rank food images in background
-    const capturedHtml = html;
-    setTimeout(() => pickImagesFromURL(capturedHtml, url).catch(() => {}), 350);
+    setTimeout(() => pickImagesFromURL(html, url).catch(()=>{}), 350);
+    // END SESSION 6 STEP 3
   } catch(e) {
     loadingEl.style.display = 'none';
     toast('⚠️ URL fetch failed — switching to Paste Text', 'err');
@@ -2135,10 +2222,10 @@ Text: ${text}`;
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 60000);
   try {
-    const res = await fetch('http://localhost:11434/api/generate', {
+    const res = await fetch('/api/ollama/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'mistral', prompt, stream: false }),
+      body: JSON.stringify({ model: 'mistral:latest', prompt, stream: false }),
       signal: ctrl.signal
     });
     clearTimeout(timer);
@@ -2188,12 +2275,12 @@ Webpage text:
 ${text}`;
 
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 60000);
+  const timer = setTimeout(() => ctrl.abort(), 180000);
   try {
-    const res = await fetch('http://localhost:11434/api/generate', {
+    const res = await fetch('/api/ollama/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'mistral', prompt, stream: false }),
+      body: JSON.stringify({ model: 'mistral:latest', prompt, stream: false }),
       signal: ctrl.signal
     });
     clearTimeout(timer);
@@ -2250,10 +2337,10 @@ async function ollamaVisionParsePDF(images) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 120000);
   try {
-    const res = await fetch('http://localhost:11434/api/generate', {
+    const res = await fetch('/api/ollama/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'llava', prompt, images, stream: false }),
+      body: JSON.stringify({ model: 'llava:latest', prompt, images, stream: false }),
       signal: ctrl.signal
     });
     clearTimeout(timer);

@@ -35,7 +35,7 @@ claude
 
 ---
 
-## Our 4 Rules (NEVER FORGET)
+## Our 6 Rules (NEVER FORGET)
 
 ### Rule 1 ⚠️ — Tests First
 Before coding ANY new feature:
@@ -61,6 +61,23 @@ Every verification report MUST show:
 C:\Users\Vit\Desktop\recipe-book\index.html — line X — description ✅
 C:\Users\Vit\Desktop\recipe-book\server.js — NOT modified ✅
 ```
+
+### Rule 5 🔒 — HTTPS for Voice Search
+Voice search (SpeechRecognition) requires HTTPS on LAN devices.
+- Run `node gen-cert.js` once to generate certs
+- Server runs HTTP :8080 AND HTTPS :8443
+- Mobile/LAN users must use `https://192.168.1.2:8443`
+
+### Rule 6 🔄 — Reusable Module Flag
+When starting any new feature, Vitaly asks:
+> "Zeev, should this feature be built as a reusable module?"
+
+If YES → build with:
+- No app-specific dependencies
+- Clean public API (`window.ModuleName`)
+- Config object for customization
+- Works in any project via `<script src>`
+- Header comment with usage docs
 
 ---
 
@@ -155,9 +172,11 @@ HTTP port 8080 + HTTPS port 8443 (requires cert.pem/key.pem — run `node gen-ce
 
 ## Planned Next Features
 
-1. Multi-user support (Session 8+)
-2. Firebase Authentication (Session 9+)
-3. Cloud deployment (Future)
+1. Session 8: Internet fallback search (SearchEngine.js module)
+2. Session 9: Multi-user support (UserManager.js module)
+3. Session 10: Firebase Authentication (AuthModule.js module)
+4. Session 11: Cloud deployment (CloudSync.js module)
+5. Session 12: Full refactoring into modules
 
 ---
 

@@ -168,13 +168,14 @@
 
 ---
 
-## 🚀 Next Session Plan (Session 9)
+## 🚀 Next Session Plan (Session 9 — Supabase Database)
 
-1. 🐛 Fix "via rotate" label in search results header (shows wrong mode)
-2. 🧪 Test Import Recipe end-to-end from internet result
-3. 📱 Test voice search on mobile via HTTPS :8443
-4. 🧪 Run full test suite (95+ tests)
-5. 👥 Start v3.0 design: UserManager.js module
+1. 🗄️ Install Supabase locally
+2. 📐 Design recipes + users + photos schema
+3. 🔄 Write migration script from recipes.json → Supabase
+4. 🔌 Connect server.js to Supabase (replace file-based persistence)
+5. 🧪 Run all 100+ tests — verify nothing broke
+6. 💾 Commit + push
 
 ---
 

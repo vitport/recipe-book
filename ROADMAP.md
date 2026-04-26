@@ -55,33 +55,63 @@
 
 ## Planned
 
-### v2.4 — Polish & Fixes (Session 9)
-- [ ] Fix "via rotate" label in search results header
-- [ ] Test Import Recipe end-to-end flow
-- [ ] Mobile voice search testing
-- [ ] Better search bar button layout
-- [ ] Add max 100 entries limit to debug log (prevent memory growth)
-- [ ] Compress base64 images before storage
-- [ ] Verify SpeechRecognition cleanup — add explicit abort() + null on stop
-- [ ] Add memory monitoring widget to debug panel
+## Phase 1: Features (Sessions 9-12)
 
-### v3.0 — Multi-User (Sessions 9–11)
+### Session 9 — Supabase Database 🗄️
+- [ ] Install Supabase locally
+- [ ] Design database schema
+- [ ] Migrate recipes.json → Supabase
+- [ ] Migrate photos → Supabase Storage
+- [ ] Update server.js to use Supabase
+- [ ] All 100 tests still passing
+
+### Session 10 — Multi-User Support 👥
 - [ ] UserManager.js reusable module (Rule 6)
 - [ ] User registration + login
-- [ ] Personal recipe collections
-- [ ] Shared family pool
+- [ ] Personal recipe collections per user
+- [ ] Shared family recipe pool
 
-### v4.0 — Firebase Auth (Session 10+)
+### Session 11 — Authentication 🔐
 - [ ] AuthModule.js reusable module (Rule 6)
-- [ ] Google login
-- [ ] Per-user data isolation
+- [ ] Google OAuth
+- [ ] Apple Sign In
+- [ ] Session management
 
-### v5.0 — Cloud (Future)
+### Session 12 — More Features ✨
+- [ ] Meal planner (weekly)
+- [ ] Shopping list from recipe
+- [ ] Recipe ratings + comments
+- [ ] Nutritional information (Mistral)
+
+## Phase 2: Infrastructure (Sessions 13-14)
+
+### Session 13 — Docker 🐳
+- [ ] Dockerfile for Node.js server
+- [ ] docker-compose.yml:
+  - recipe-app container
+  - ollama container
+  - supabase containers
+- [ ] One command: `docker compose up`
+
+### Session 14 — Cloud Deployment ☁️
 - [ ] CloudSync.js reusable module (Rule 6)
-- [ ] Cloud deployment (Railway / Render)
-- [ ] Firestore instead of recipes.json
-- [ ] PWA / installable app
+- [ ] Deploy to Railway/Render
+- [ ] Custom domain
+- [ ] SSL certificate (automatic)
+- [ ] CI/CD via GitHub Actions
 
-### v6.0 — Full Modularisation (Future)
-- [ ] Refactor all features into independent modules
-- [ ] Each module: no app-specific deps, clean public API
+## Phase 3: Refactoring (Session 15)
+
+### Session 15 — Full Refactoring 🔧
+- [ ] Extract all modules:
+  - DebugPanel.js
+  - Importer.js
+  - Exporter.js
+  - RecipeAI.js
+  - VoiceSearch.js
+  - SearchEngine.js ✅ (done!)
+  - UserManager.js
+  - AuthModule.js
+  - CloudSync.js
+- [ ] Full module documentation
+- [ ] npm package preparation

@@ -39,21 +39,49 @@
 - [x] Test 1.1.8: HTTPS server accessible
 - [x] Tests 2.6.1–2.6.5: Voice search coverage
 
+### v2.3 — Internet Search (Session 8) ✅ Complete
+- [x] SearchEngine.js reusable module (Rule 6 + Rule 7)
+- [x] Serper API integration (2500 free Google results/month)
+- [x] Auto mode: API first, Google/Bing scrape fallback
+- [x] 🌐 button in search bar
+- [x] Auto-trigger when 0 local results (debounced 800ms)
+- [x] Mistral AI summary of results
+- [x] 📥 Import Recipe from internet results
+- [x] API key secure storage in config.js (gitignored)
+- [x] /api/config/search endpoint for dynamic key delivery
+- [x] 95+ tests total (added 1.5.x Config & Security, 2.7.x Internet Search)
+
 ---
 
 ## Planned
 
-### v2.3 — Polish (Session 8)
-- [ ] Recipe sharing (export link / QR code)
-- [ ] Bulk import from text file
-- [ ] Better mobile layout
+### v2.4 — Polish & Fixes (Session 9)
+- [ ] Fix "via rotate" label in search results header
+- [ ] Test Import Recipe end-to-end flow
+- [ ] Mobile voice search testing
+- [ ] Better search bar button layout
+- [ ] Add max 100 entries limit to debug log (prevent memory growth)
+- [ ] Compress base64 images before storage
+- [ ] Verify SpeechRecognition cleanup — add explicit abort() + null on stop
+- [ ] Add memory monitoring widget to debug panel
 
-### v3.0 — Multi-User (Session 8+)
-- [ ] Firebase Authentication (Google login)
-- [ ] Per-user recipe collections
-- [ ] Family sharing mode
+### v3.0 — Multi-User (Sessions 9–11)
+- [ ] UserManager.js reusable module (Rule 6)
+- [ ] User registration + login
+- [ ] Personal recipe collections
+- [ ] Shared family pool
 
-### v4.0 — Cloud (Future)
+### v4.0 — Firebase Auth (Session 10+)
+- [ ] AuthModule.js reusable module (Rule 6)
+- [ ] Google login
+- [ ] Per-user data isolation
+
+### v5.0 — Cloud (Future)
+- [ ] CloudSync.js reusable module (Rule 6)
 - [ ] Cloud deployment (Railway / Render)
 - [ ] Firestore instead of recipes.json
 - [ ] PWA / installable app
+
+### v6.0 — Full Modularisation (Future)
+- [ ] Refactor all features into independent modules
+- [ ] Each module: no app-specific deps, clean public API

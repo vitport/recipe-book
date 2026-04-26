@@ -3030,6 +3030,19 @@ async function init() {
   setupDZ('dz-photo', runOCR, ['image/']);
   setupDZ('dz-pdf', handlePDF, ['application/pdf']);
   console.log(`🍳 App initialized — ${recipes.length} recipe(s) loaded`);
+
+  // ═══ SESSION 8: API Key Security — loaded from server ═══
+  // Key stored in config.js (gitignored), never in page source
+  try {
+    const cfgRes = await fetch('/api/config/search');
+    const cfgData = await cfgRes.json();
+    dbg('🔑 Search API key loaded from server');
+    SearchEngine.configure({ mode: 'auto', apiKey: cfgData.serperKey || '' });
+  } catch(e) {
+    dbg('⚠️ Search config unavailable — using scrape mode', 'warn');
+    SearchEngine.configure({ mode: 'scrape' });
+  }
+  // END SESSION 8: API Key Security
 }
 
 init();
@@ -3046,9 +3059,8 @@ function triggerWebSearch() {
 }
 
 SearchEngine.configure({
-  mode: 'auto',
+  // mode and apiKey set dynamically in init() after fetching /api/config/search
   apiProvider: 'serper',
-  apiKey: '3b2b3bea20ed53dd81b27c34c0bf7d21a241d272',
   scrapeEngine: 'rotate',
   useMistral: true,
   onImport: (url) => {

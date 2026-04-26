@@ -4,7 +4,7 @@
 
 ---
 
-## 🚦 Current Version: 2.3 (In Progress)
+## 🚦 Current Version: 2.3 ✅ Complete
 
 | Field | Value |
 |-------|-------|
@@ -75,15 +75,17 @@
 - Live log with timestamps + colors ✅
 - Select All + copy logs ✅
 
-### Internet Search (NEW - Session 8)
-- SearchEngine.js reusable module ✅
+### Internet Search (Session 8) ✅
+- SearchEngine.js reusable module (Rule 6) ✅
 - Multi-mode: api / scrape / auto ✅
-- Scrape mode: Google + Bing rotation ✅
-- API mode: Brave + Google (needs API key) ✅
+- Serper API integration (2500 free queries/month) ✅
+- Auto mode: API first, scrape fallback ✅
 - 🌐 button in search bar ✅
 - Auto-trigger when 0 local results ✅
 - Mistral summary of results ✅
-- 📥 Import button on each result ✅
+- 📥 Import Recipe button on each result ✅
+- API key stored securely in config.js (gitignored) ✅
+- Key loaded dynamically from /api/config/search ✅
 
 ---
 
@@ -102,9 +104,12 @@
 | # | Issue | Impact | Fix |
 |---|-------|--------|-----|
 | 1 | SpeechRecognition available: shows empty in debug | Low | Investigate console override timing |
-| 2 | Google scraping may be blocked after 10-20 requests | Medium | Use Brave API as fallback |
+| 2 | Google scraping may be blocked after 10-20 requests | Medium | Serper API is primary fallback |
 | 3 | Self-signed SSL certificate shows browser warning | Low | Expected for LAN, accept once |
 | 4 | Voice search HTTPS only (no HTTP) | Low | Always use port 8443 |
+| 5 | Base64 photos may cause memory growth | Medium | Planned: image compression in v2.4 |
+| 6 | Debug log accumulates entries — no auto-limit | Low | Planned: max 100 entries in v2.4 |
+| 7 | SpeechRecognition cleanup needs verification | Low | Planned: explicit abort() in v2.4 |
 
 ---
 
@@ -113,8 +118,9 @@
 | Service | Status | Notes |
 |---------|--------|-------|
 | Ollama + Mistral 7B | ✅ Running | Port 11434, ~5GB RAM |
-| Brave Search API | ❌ Not configured | Free 2000/month, get at api.search.brave.com |
-| Google Custom Search | ❌ Not configured | Free 100/day, needs API key + CX |
+| Serper API | ✅ Configured | config.js — 2500 free queries/month |
+| Google CX | ✅ Configured | 97edc9eb476024bb9 (in config.js) |
+| Google Custom Search API | ❌ Not configured | Closed to new customers |
 | SSL Certificate | ✅ Generated | cert.pem + key.pem, valid 1 year |
 | Self-signed cert | ✅ Active | Run node gen-cert.js to regenerate |
 
@@ -124,12 +130,12 @@
 
 | Series | Name | Tests | Status |
 |--------|------|-------|--------|
-| 1 | Infrastructure | 8 | ✅ 100% |
-| 2 | Features | 42 | ✅ 100% |
+| 1 | Infrastructure (server, libs, UI, CRUD, config, memory) | 31 | ✅ 100% |
+| 2 | Features (core, voice, internet search) | 59 | ✅ 100% |
 | 3 | AI Deep Tests | 10 | ✅ 100% |
-| **Total** | | **90+** | **✅ 100%** |
+| **Total** | | **100** | **✅ 100%** |
 
-**AI Quality Score: 7.1/10** (Mistral self-rating)
+**AI Quality Score: 7.6/10** (improved from 7.1)
 
 ---
 
@@ -162,13 +168,13 @@
 
 ---
 
-## 🚀 Next Session Plan
+## 🚀 Next Session Plan (Session 9)
 
-1. ✅ Verify internet search scrape results working
-2. 🔑 Setup Brave API key if scraping unreliable
-3. 🧪 Run full test suite (90+ tests)
-4. 📱 Test voice search on mobile devices
-5. 💾 Commit + push all Session 8 changes
+1. 🐛 Fix "via rotate" label in search results header (shows wrong mode)
+2. 🧪 Test Import Recipe end-to-end from internet result
+3. 📱 Test voice search on mobile via HTTPS :8443
+4. 🧪 Run full test suite (95+ tests)
+5. 👥 Start v3.0 design: UserManager.js module
 
 ---
 

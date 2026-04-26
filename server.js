@@ -4,6 +4,7 @@ const path = require('path');
 const os = require('os');
 const http = require('http');
 const https = require('https');
+const config = require('./config.js');
 
 const app = express();
 const PORT = 8080;
@@ -208,6 +209,12 @@ app.get('/api/fetch-url', (req, res) => {
   doFetch(url, 3);
 });
 
+// ── CONFIG ENDPOINT ──────────────────────────────────────────────────
+// Returns API keys to the browser securely (server reads from config.js)
+app.get('/api/config/search', (req, res) => {
+  res.json({ serperKey: config.SERPER_API_KEY, googleCx: config.GOOGLE_CX });
+});
+
 // ── SEARCH PROXY (multi-mode) ─────────────────────────────────────────
 // Supports: mode=api (Brave/Google) and mode=scrape (Google/Bing/rotate)
 
@@ -302,7 +309,7 @@ app.get('/api/search', async (req, res) => {
     if (mode === 'api' && provider === 'serper') {
       const lang = req.query.lang || 'en';
       const payload = JSON.stringify({ q: q + ' recipe', num: 5, hl: lang });
-      const r = await searchPost('https://google.serper.dev/search', payload, { 'X-API-KEY': apiKey });
+      const r = await searchPost('https://google.serper.dev/search', payload, { 'X-API-KEY': apiKey || config.SERPER_API_KEY });
       const d = JSON.parse(r.body);
       results = (d.organic || []).map(x => ({
         title: x.title, url: x.link, snippet: x.snippet || '', image: x.imageUrl || ''

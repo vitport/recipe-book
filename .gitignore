@@ -1,8 +1,8 @@
+config.js
 server.log
 files.zip
 node_modules/
 *.zip
+*.pem
 .claude/
-cert.pem
-key.pem
 gen-cert.js

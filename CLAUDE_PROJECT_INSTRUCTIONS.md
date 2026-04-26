@@ -176,6 +176,10 @@ Before finishing EVERY session, always:
 | _micBtn(state) | Update mic button icon/state/disabled |
 | _micStatus(msg,hide,state) | Update status pill below search bar |
 | selectAllLogs() | Select all text in debug log panel |
+| triggerWebSearch() | Manual 🌐 button handler |
+| SearchEngine.search(q) | Internet search (auto/api/scrape) |
+| SearchEngine.configure(opts) | Set mode/key/provider/onImport |
+| SearchEngine.hideResults() | Hide internet results panel |
 
 ### server.js endpoints
 | Endpoint | Method | Purpose |
@@ -187,6 +191,8 @@ Before finishing EVERY session, always:
 | /api/ollama/release | POST | Free Mistral RAM |
 | /api/proxy-image | GET | Download image server-side |
 | /api/fetch-url | GET | Fetch external URL server-side |
+| /api/config/search | GET | Return API keys to browser securely |
+| /api/search | GET | Internet search (Serper API + scrape fallback) |
 
 HTTP port 8080 + HTTPS port 8443 (requires cert.pem/key.pem — run `node gen-cert.js` once)
 
@@ -207,9 +213,9 @@ HTTP port 8080 + HTTPS port 8443 (requires cert.pem/key.pem — run `node gen-ce
 ## Test Suite
 
 - Location: http://localhost:8080/test.html (or https://...:8443/test.html for HTTPS)
-- Total tests: 72 (as of Session 7)
-- Series 1: Infrastructure — server, libraries, HTTPS (test 1.1.8)
-- Series 2: Features — CRUD, AI parse, PDF, photos, voice search (2.6.x)
+- Total tests: 95+ (as of Session 8)
+- Series 1: Infrastructure — server (1.1.x), libraries (1.2.x), UI (1.3.x), CRUD (1.4.x), Config & Security (1.5.x)
+- Series 2: Features — core (2.1–2.5), voice search (2.6.x), internet search (2.7.x)
 - Series 3: AI Deep Tests — Mistral self-eval, recipe quality, cross-language
 - Run after EVERY feature change
 - Export HTML report for analysis
@@ -224,16 +230,18 @@ HTTP port 8080 + HTTPS port 8443 (requires cert.pem/key.pem — run `node gen-ce
 | 5 | PDF export, OCR, test suite |
 | 6 | CORS fix, server proxy, Schema.org parsing, debug mode |
 | 7 | Voice search (SpeechRecognition + Mistral), mic permission popup, HTTPS on port 8443, visual recording feedback, debug Select All |
+| 8 | SearchEngine.js module, Serper API, auto mode, 🌐 button, import recipe from internet, API key security (config.js) |
 
 ---
 
 ## Planned Next Features
 
-1. Session 8: Internet fallback search (SearchEngine.js module)
-2. Session 9: Multi-user support (UserManager.js module)
-3. Session 10: Firebase Authentication (AuthModule.js module)
-4. Session 11: Cloud deployment (CloudSync.js module)
-5. Session 12: Full refactoring into modules
+1. Fix "via rotate" label in search results header
+2. Test Import Recipe end-to-end flow
+3. Session 9: Multi-user support (UserManager.js module)
+4. Session 10: Firebase Authentication (AuthModule.js module)
+5. Session 11: Cloud deployment (CloudSync.js module)
+6. Session 12: Full refactoring into modules
 
 ---
 

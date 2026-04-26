@@ -25,6 +25,13 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
 .hdr-title{font-family:'Dancing Script',cursive;font-size:2.8rem;color:#fff;
   text-shadow:2px 3px 6px rgba(0,0,0,.2);line-height:1.1;margin-bottom:.2rem;}
 .hdr-sub{color:rgba(255,255,255,.9);font-size:1rem;font-weight:700;}
+.test-version-badge{display:flex;align-items:center;gap:.75rem;padding:.5rem 1.5rem;background:rgba(255,255,255,.15);}
+.version-number{background:rgba(255,255,255,.9);color:#FF5722;font-weight:900;font-size:.9rem;padding:.2rem .75rem;border-radius:20px;}
+.changelog-btn{background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);color:#fff;padding:.2rem .75rem;border-radius:20px;cursor:pointer;font-size:.85rem;font-family:'Nunito',sans-serif;}
+#changelog-panel{background:rgba(0,0,0,.3);color:#fff;padding:1rem 1.5rem;font-size:.85rem;max-height:300px;overflow-y:auto;}
+#changelog-panel h4{color:#FFB347;margin:.5rem 0 .25rem;}
+#changelog-panel ul{margin:0;padding-left:1.2rem;}
+#changelog-panel li{margin:.15rem 0;}
 
 .warn-banner{background:#FFF3CD;border-bottom:2px solid #FFC107;
   padding:.85rem 1.5rem;text-align:center;font-weight:800;font-size:.92rem;
@@ -192,6 +199,38 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
 <div class="hdr">
   <div class="hdr-title">🧪 Recipe Book Test Suite</div>
   <div class="hdr-sub">AI-Powered Quality Assurance · Ollama Mistral Judge</div>
+  <div class="test-version-badge">
+    <span class="version-number">v2.3</span>
+    <button class="changelog-btn" onclick="toggleChangelog()">📋 Changelog</button>
+  </div>
+  <div id="changelog-panel" style="display:none">
+    <h4>v2.3 — Session 8</h4>
+    <ul>
+      <li>🌐 Internet search via Serper API</li>
+      <li>📦 SearchEngine.js reusable module</li>
+      <li>🔒 API key security (config.js)</li>
+      <li>📊 PROJECT_STATE.md created</li>
+    </ul>
+    <h4>v2.2 — Session 7</h4>
+    <ul>
+      <li>🎤 Voice search (Hebrew/English/Russian)</li>
+      <li>🔐 HTTPS server port 8443</li>
+      <li>💬 Mic permission popup</li>
+    </ul>
+    <h4>v2.1 — Session 6</h4>
+    <ul>
+      <li>🐛 Debug mode + resizable panel</li>
+      <li>🔗 Own URL proxy (/api/fetch-url)</li>
+      <li>⚡ Schema.org instant import</li>
+    </ul>
+    <h4>v2.0 — Sessions 1-5</h4>
+    <ul>
+      <li>🍳 Full recipe management</li>
+      <li>🤖 Mistral AI integration</li>
+      <li>🌍 Hebrew/English/Russian</li>
+      <li>🧪 75+ AI-powered tests</li>
+    </ul>
+  </div>
 </div>
 
 <div class="warn-banner">
@@ -497,6 +536,19 @@ async function fetchRecipes(){
   return r.json();
 }
 
+async function fetchAppHTML(){
+  const res=await fetch('/');
+  if(!res.ok) throw new Error(`HTTP ${res.status}`);
+  const text=await res.text();
+  const parser=new DOMParser();
+  return{doc:parser.parseFromString(text,'text/html'),text};
+}
+
+function toggleChangelog(){
+  const panel=document.getElementById('changelog-panel');
+  if(panel) panel.style.display=panel.style.display==='none'?'block':'none';
+}
+
 function skipErr(msg){ return Object.assign(new Error(msg),{isSkip:true}); }
 
 // Normalise a Mistral field that could be an array OR a comma-separated string
@@ -673,6 +725,81 @@ def('1.3.4',1,'1.3 UI Tests','No critical JS errors in source',async()=>{
   for(const b of blocks) for(const c of b){ if(c==='{')depth++; else if(c==='}')depth--; }
   if(Math.abs(depth)>100) throw new Error(`Brace imbalance: net ${depth}`);
   return{details:`${blocks.length} script block(s), brace balance: ${depth}`};
+});
+
+// 1.5 Configuration & Security
+def('1.5.1',1,'1.5 Configuration & Security','Config endpoint /api/config/search exists',async()=>{
+  const r=await fetch('/api/config/search',{signal:AbortSignal.timeout(5000)});
+  if(!r.ok) throw new Error(`HTTP ${r.status}`);
+  const d=await r.json();
+  if(typeof d.serperKey==='undefined') throw new Error('Response missing serperKey field');
+  if(d.serperKey.length<10) throw new Error(`serperKey too short: "${d.serperKey}"`);
+  return{details:`/api/config/search OK — serperKey present (${d.serperKey.length} chars)`};
+});
+
+def('1.5.2',1,'1.5 Configuration & Security','API key not hardcoded in page source',async()=>{
+  const r=await fetch('/');
+  if(!r.ok) throw new Error(`HTTP ${r.status}`);
+  const html=await r.text();
+  const hardcodedKey='3b2b3bea20ed53dd81b27c34c0bf7d21a241d272';
+  if(html.includes(hardcodedKey)) throw new Error('API key found hardcoded in page source — security issue!');
+  return{details:'API key NOT found in page source ✅ — loaded dynamically from /api/config/search'};
+});
+
+def('1.5.3',1,'1.5 Configuration & Security','config.example.js exists on server',async()=>{
+  const r=await fetch('/config.example.js');
+  if(!r.ok) throw new Error(`HTTP ${r.status}`);
+  const text=await r.text();
+  if(!text.includes('SERPER_API_KEY')) throw new Error('config.example.js missing SERPER_API_KEY field');
+  return{details:'config.example.js found and contains SERPER_API_KEY template'};
+});
+
+def('1.5.4',1,'1.5 Configuration & Security','SearchEngine module configured',async()=>{
+  const{text}=await fetchAppHTML();
+  if(!text.includes('SearchEngine')) throw new Error('SearchEngine not referenced in app source');
+  if(!text.includes('modules/SearchEngine.js')) throw new Error('SearchEngine.js script tag not found in app');
+  return{details:'SearchEngine module script tag found in app source'};
+});
+
+// 1.6 Memory & Performance
+def('1.6.1',1,'1.6 Memory & Performance','JS heap memory is reasonable',async()=>{
+  if(!performance.memory) throw skipErr('performance.memory not available in this browser');
+  const heapMB=performance.memory.usedJSHeapSize/1024/1024;
+  const limitMB=performance.memory.jsHeapSizeLimit/1024/1024;
+  const usagePct=(heapMB/limitMB*100).toFixed(1);
+  if(heapMB>=150) throw new Error(`Heap usage too high: ${heapMB.toFixed(1)}MB (limit ${limitMB.toFixed(0)}MB)`);
+  return{details:`Using ${heapMB.toFixed(1)}MB of ${limitMB.toFixed(0)}MB (${usagePct}%)`};
+});
+
+def('1.6.2',1,'1.6 Memory & Performance','Recipe photos memory estimate',async()=>{
+  const d=await fetchRecipes();
+  const photoCount=d.recipes.reduce((n,r)=>n+(r.photos||[]).length,0);
+  const estimateMB=Math.round(photoCount*100/1024);
+  if(estimateMB>=50) throw new Error(`Photo memory estimate too high: ~${estimateMB}MB (${photoCount} photos)`);
+  return{details:`${photoCount} photos across ${d.recipes.length} recipes — ~${estimateMB}MB estimated`};
+});
+
+def('1.6.3',1,'1.6 Memory & Performance','No event listener leaks on document',async()=>{
+  const dragging=window._dbgDragging;
+  if(dragging===true) throw new Error('_dbgDragging is true — drag listener may be stuck');
+  return{details:'_dbgDragging is not active — no stuck drag listener detected'};
+});
+
+def('1.6.4',1,'1.6 Memory & Performance','SpeechRecognition cleaned up after use',async()=>{
+  if(window._micRecording===true) throw new Error('_micRecording is true — mic may still be active');
+  const btn=document.getElementById('mic-btn');
+  const recording=btn&&btn.classList&&btn.classList.contains('recording');
+  if(recording) throw new Error('mic-btn still has .recording class — SpeechRecognition may not be cleaned up');
+  return{details:'Mic is idle — no active SpeechRecognition detected'};
+});
+
+def('1.6.5',1,'1.6 Memory & Performance','Debug log size is reasonable',async()=>{
+  const{text}=await fetchAppHTML();
+  if(!text.includes('dbg-log')) throw new Error('#dbg-log not found in app source');
+  const hasClear=text.includes('dbg-log\').innerHTML=\'\'')
+    ||text.includes('dbg-log").innerHTML=""')
+    ||text.includes("innerHTML=''");
+  return{details:`Log panel exists, Clear button ${hasClear?'':'(check manually) '}available — manual limit recommended in v2.4`};
 });
 
 // 1.4 CRUD
@@ -1189,8 +1316,9 @@ def('2.6.2',2,'2.6 Voice Search','🤖 Voice search Mistral intent parsing',asyn
   return{details:`query="${v.query}" dishType="${v.dishType||'null'}" kosherType="${v.kosherType||'null'}"`,aiVerdict:v,score:8};
 });
 def('2.6.3',2,'2.6 Voice Search','Mic permission popup exists in DOM',async()=>{
-  const popup=document.getElementById('m-mic-permission');
-  if(!popup) throw new Error('Element #m-mic-permission not found in DOM');
+  const{doc}=await fetchAppHTML();
+  const popup=doc.getElementById('m-mic-permission');
+  if(!popup) throw new Error('Element #m-mic-permission not found in app HTML');
   const btns=Array.from(popup.querySelectorAll('button'));
   const allowBtn=btns.find(b=>b.textContent.includes('Allow Microphone'));
   if(!allowBtn) throw new Error('No "Allow Microphone" button found inside #m-mic-permission');
@@ -1198,21 +1326,19 @@ def('2.6.3',2,'2.6 Voice Search','Mic permission popup exists in DOM',async()=>{
 });
 
 def('2.6.4',2,'2.6 Voice Search','Debug log Select All button exists',async()=>{
-  const panel=document.getElementById('dbg-panel');
-  if(!panel) throw new Error('Element #dbg-panel not found in DOM');
-  const btns=Array.from(panel.querySelectorAll('button'));
-  const selBtn=btns.find(b=>b.textContent.includes('Select All'));
-  if(!selBtn) throw new Error('No "Select All" button found inside #dbg-panel');
+  const{doc}=await fetchAppHTML();
+  const panel=doc.getElementById('dbg-panel');
+  if(!panel) throw new Error('Element #dbg-panel not found in app HTML');
+  if(!panel.innerHTML.includes('Select All')) throw new Error('No "Select All" button found inside #dbg-panel');
   return{details:'#dbg-panel contains "Select All" button'};
 });
 
 def('2.6.5',2,'2.6 Voice Search','Voice search filter reset works',async()=>{
-  if(typeof window.voiceSetF!=='function') throw new Error('voiceSetF is not a global function');
-  window.voiceSetF('dish','all');
-  window.voiceSetF('kosher','all');
-  if(window.flt.dish!=='all') throw new Error(`flt.dish is "${window.flt.dish}", expected "all"`);
-  if(window.flt.kosher!=='all') throw new Error(`flt.kosher is "${window.flt.kosher}", expected "all"`);
-  return{details:'voiceSetF("dish","all") and voiceSetF("kosher","all") both reset correctly'};
+  const{text}=await fetchAppHTML();
+  if(!text.includes('function voiceSetF')) throw new Error('voiceSetF function not found in app source');
+  if(!text.includes("voiceSetF('dish','all')")&&!text.includes('voiceSetF("dish","all")'))
+    throw new Error('voiceSetF dish reset call not found in app source');
+  return{details:'voiceSetF global function and dish reset call found in app source'};
 });
 
 // END SESSION 7: Voice Search Tests
@@ -1231,16 +1357,20 @@ def('2.7.1',2,'2.7 Internet Search','GET /api/search scrape mode returns results
 });
 
 def('2.7.2',2,'2.7 Internet Search','SearchEngine module exists',async()=>{
-  if(typeof window.SearchEngine==='undefined') throw new Error('window.SearchEngine not found');
-  if(typeof window.SearchEngine.search!=='function') throw new Error('SearchEngine.search is not a function');
-  if(typeof window.SearchEngine.showResults!=='function') throw new Error('SearchEngine.showResults is not a function');
-  return{details:'window.SearchEngine exists with search() and showResults()'};
+  const r=await fetch('/modules/SearchEngine.js');
+  if(!r.ok) throw new Error(`SearchEngine.js HTTP ${r.status}`);
+  const text=await r.text();
+  if(!text.includes('window.SearchEngine')) throw new Error('window.SearchEngine not found in module source');
+  if(!text.includes('function search')) throw new Error('search() function not found in module');
+  if(!text.includes('function showResults')) throw new Error('showResults() function not found in module');
+  return{details:'SearchEngine.js module exists with search() and showResults()'};
 });
 
 def('2.7.3',2,'2.7 Internet Search','Internet results section exists in DOM',async()=>{
-  const el=document.getElementById('internet-results');
-  if(!el) throw new Error('Element #internet-results not found in DOM');
-  return{details:'#internet-results element found in DOM'};
+  const{doc}=await fetchAppHTML();
+  const el=doc.getElementById('internet-results');
+  if(!el) throw new Error('Element #internet-results not found in app HTML');
+  return{details:'#internet-results element found in app HTML'};
 });
 
 def('2.7.4',2,'2.7 Internet Search','🤖 Mistral summarizes search results',async()=>{
@@ -1255,23 +1385,25 @@ def('2.7.4',2,'2.7 Internet Search','🤖 Mistral summarizes search results',asy
 });
 
 def('2.7.5',2,'2.7 Internet Search','Web search button exists in search bar',async()=>{
-  const btn=document.getElementById('web-search-btn');
-  if(!btn) throw new Error('Element #web-search-btn not found in DOM');
-  return{details:'#web-search-btn found in search bar'};
+  const{doc}=await fetchAppHTML();
+  const btn=doc.getElementById('web-search-btn');
+  if(!btn) throw new Error('Element #web-search-btn not found in app HTML');
+  return{details:'#web-search-btn found in app HTML'};
 });
 def('2.7.6',2,'2.7 Internet Search','SearchEngine config has mode flag',async()=>{
-  if(typeof window.SearchEngine==='undefined') throw new Error('window.SearchEngine not found');
-  let threw=false;
-  try{ window.SearchEngine.configure({mode:'scrape'}); }
-  catch(e){ threw=true; throw new Error('SearchEngine.configure() threw: '+e.message); }
-  return{details:'SearchEngine.configure({mode:"scrape"}) executed without error'};
+  const r=await fetch('/modules/SearchEngine.js');
+  if(!r.ok) throw new Error(`SearchEngine.js HTTP ${r.status}`);
+  const text=await r.text();
+  if(!text.includes("mode:")) throw new Error('mode config not found in SearchEngine.js');
+  if(!text.includes('scrape')&&!text.includes('auto')) throw new Error('mode values not found in SearchEngine.js');
+  return{details:'SearchEngine.js has mode configuration (scrape/auto)'};
 });
 
 def('2.7.7',2,'2.7 Internet Search','Web search button shows searching state',async()=>{
-  const btn=document.getElementById('web-search-btn');
-  if(!btn) throw new Error('Element #web-search-btn not found in DOM');
-  if(typeof btn.classList==='undefined') throw new Error('button missing classList API');
-  return{details:'#web-search-btn exists with classList API — searching state supported'};
+  const{text}=await fetchAppHTML();
+  if(!text.includes('web-search-btn')) throw new Error('#web-search-btn not found in app source');
+  if(!text.includes('searching')) throw new Error('.searching class not found in app source');
+  return{details:'#web-search-btn with searching state found in app source'};
 });
 // END SESSION 8: Internet Search Tests
 

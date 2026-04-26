@@ -4,6 +4,7 @@ const path = require('path');
 const os = require('os');
 const http = require('http');
 const https = require('https');
+const { execSync, exec } = require('child_process');
 const config = require('./config.js');
 
 const app = express();
@@ -359,6 +360,53 @@ app.get('/api/search', async (req, res) => {
     console.log(`Search error [${mode}]: ${e.message}`);
     res.json({ results: [], error: e.message, query: q });
   }
+});
+
+// ── TTS (Text to Speech) ──────────────────────────────────────────────
+const PIPER_EXE = path.join(__dirname, 'piper.exe');
+
+app.get('/api/tts/voices', (req, res) => {
+  const voicesDir = path.join(__dirname, 'voices');
+  let voices = [];
+  let piperInstalled = false;
+  try { execSync(`"${PIPER_EXE}" --version`, { stdio: 'pipe' }); piperInstalled = true; } catch(e) {}
+  try {
+    const files = fs.readdirSync(voicesDir).filter(f => f.endsWith('.onnx'));
+    voices = files.map(f => f.replace('.onnx', ''));
+  } catch(e) {}
+  if (!voices.length) {
+    voices = ['en_US-lessac-medium', 'en_US-ryan-medium', 'he_IL-default', 'ru_RU-default'];
+  }
+  res.json({ voices, piperInstalled });
+});
+
+app.post('/api/tts/speak', (req, res) => {
+  const { text = '', voice = 'en_US-lessac-medium', speed = 1.0 } = req.body;
+  if (!text.trim()) return res.status(400).json({ error: 'text is required' });
+
+  let piperInstalled = false;
+  try { execSync(`"${PIPER_EXE}" --version`, { stdio: 'pipe' }); piperInstalled = true; } catch(e) {}
+
+  if (!piperInstalled) {
+    return res.json({ error: 'Piper not installed', fallback: 'browser', installUrl: 'https://github.com/rhasspy/piper/releases' });
+  }
+
+  const modelPath = path.join(__dirname, 'voices', voice + '.onnx');
+  const outputFile = path.join(os.tmpdir(), 'tts-output.wav');
+  const safeText = text.replace(/"/g, '\\"').replace(/`/g, '').replace(/\$/g, '');
+  const cmd = `echo "${safeText}" | "${PIPER_EXE}" --model "${modelPath}" --output_file "${outputFile}"`;
+
+  exec(cmd, { timeout: 10000 }, (err) => {
+    if (err) {
+      return res.json({ error: err.message, fallback: 'browser' });
+    }
+    try {
+      const audioData = fs.readFileSync(outputFile).toString('base64');
+      res.json({ audioData, mimeType: 'audio/wav', voice, engine: 'piper' });
+    } catch(readErr) {
+      res.json({ error: readErr.message, fallback: 'browser' });
+    }
+  });
 });
 
 let localIP = 'localhost';

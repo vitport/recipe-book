@@ -1221,3 +1221,7 @@
 {"timestamp":"2026-04-26T15:41:37.582Z","method":"POST","path":"/api/ollama/generate","status":200,"duration":5005,"ip":"192.168.1.133"}
 {"timestamp":"2026-04-26T15:41:59.042Z","method":"POST","path":"/api/ollama/generate","status":200,"duration":16430,"ip":"192.168.1.133"}
 {"timestamp":"2026-04-26T15:41:59.139Z","method":"GET","path":"/recipes.json","status":200,"duration":2,"ip":"192.168.1.133"}
+{"timestamp":"2026-04-26T18:14:36.136Z","method":"GET","path":"/voice-assistant.html","status":200,"duration":7,"ip":"192.168.1.133"}
+{"timestamp":"2026-04-26T18:14:36.200Z","method":"GET","path":"/modules/VoiceAssistant.js","status":200,"duration":3,"ip":"192.168.1.133"}
+{"timestamp":"2026-04-26T18:14:36.267Z","method":"GET","path":"/api/tts/voices","status":200,"duration":32,"ip":"192.168.1.133"}
+{"timestamp":"2026-04-26T18:14:36.810Z","method":"GET","path":"/favicon.ico","status":404,"duration":3,"ip":"192.168.1.133"}

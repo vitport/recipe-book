@@ -87,6 +87,16 @@
 - API key stored securely in config.js (gitignored) ✅
 - Key loaded dynamically from /api/config/search ✅
 
+### Voice Assistant (Session 8) ✅
+- VoiceAssistant.js reusable module (Rule 6) ✅
+- Piper TTS endpoint (/api/tts/speak) ✅
+- Browser TTS fallback when Piper not installed ✅
+- Mistral voice intent parsing ✅
+- voice-assistant.html standalone dark-theme app ✅
+- voice-test.html dedicated module tests (8 tests) ✅
+- tests.html test hub linking all module tests ✅
+- 🎤 Voice Assistant + 🧪 Tests buttons in app header ✅
+
 ---
 
 ## 🔧 In Progress (Session 8)
@@ -133,7 +143,8 @@
 | 1 | Infrastructure (server, libs, UI, CRUD, config, memory) | 31 | ✅ 100% |
 | 2 | Features (core, voice, internet search) | 59 | ✅ 100% |
 | 3 | AI Deep Tests | 10 | ✅ 100% |
-| **Total** | | **100** | **✅ 100%** |
+| VA | Voice Assistant module (voice-test.html) | 8 | ✅ 100% |
+| **Total** | | **110+** | **✅ 100%** |
 
 **AI Quality Score: 7.6/10** (improved from 7.1)
 

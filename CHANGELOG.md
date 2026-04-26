@@ -17,7 +17,14 @@
 - 8 development rules established
 
 ### Added (continued)
-- 🧪 98 tests total (93 passing + 5 new memory tests)
+- 🎤 VoiceAssistant.js reusable module (Rule 6)
+- 🔊 Piper TTS integration + browser TTS fallback
+- 🤖 Mistral intent understanding for voice commands
+- 🎨 voice-assistant.html standalone dark-theme app
+- 🧪 voice-test.html dedicated module test page
+- 🧪 tests.html test hub (all module tests in one place)
+- 📋 Rule 9: Module test pages standard
+- 🧪 110+ tests total (100 recipe book + 8 voice + 5 memory)
 - 🧠 Memory leak test suite added (group 1.6 Memory & Performance)
 - 📊 AI Score improved: 7.1 → 7.6
 

@@ -35,7 +35,7 @@ claude
 
 ---
 
-## Our 8 Rules (NEVER FORGET)
+## Our 9 Rules (NEVER FORGET)
 
 ### Rule 1 ⚠️ — Tests First
 Before coding ANY new feature:
@@ -135,6 +135,20 @@ Before finishing EVERY session, always:
 > Vitaly reminds Zeev at end of every session:
 > "Zeev, before we finish — Rule 8 checklist!
 >  Shall we update docs and push to GitHub?"
+
+### Rule 9 🧪 — Module Test Pages
+Every reusable module gets its own dedicated test page:
+- `VoiceAssistant.js` → `voice-test.html`
+- `SearchEngine.js` → `search-test.html` (future)
+- `AuthModule.js` → `auth-test.html` (future)
+
+Each test page must:
+1. Have "← Return to [App Name]" button → returns to the **module's** app
+2. Match the same orange gradient style as `test.html`
+3. Be linked from `tests.html` hub
+4. Have its own version badge
+
+All test pages are linked from the `tests.html` hub page.
 
 ---
 

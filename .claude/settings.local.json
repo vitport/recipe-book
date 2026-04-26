@@ -20,7 +20,16 @@
       "Bash(node -e \"const s=require\\('selfsigned'\\);const p=s.generate\\([{name:'commonName',value:'localhost'}],{days:1}\\);console.log\\(Object.keys\\(p\\)\\);\")",
       "Bash(node -e \"const s=require\\('selfsigned'\\);const p=s.generate\\([{name:'commonName',value:'localhost'}],{days:1}\\);console.log\\(JSON.stringify\\(p\\)\\);\")",
       "Bash(node -e \"const s=require\\('selfsigned'\\);console.log\\(typeof s, typeof s.generate, Object.keys\\(s\\)\\);\")",
-      "Bash(timeout 3 node server.js)"
+      "Bash(timeout 3 node server.js)",
+      "Bash(curl -L \"https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_windows_amd64.zip\" -o piper.zip)",
+      "Bash(unzip piper.zip -d piper-temp)",
+      "Bash(curl -L \"https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx\" -o voices/en_US-lessac-medium.onnx)",
+      "Bash(curl -L \"https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx.json\" -o voices/en_US-lessac-medium.onnx.json)",
+      "Bash(./piper.exe --version)",
+      "Bash(cp piper-temp/piper/*.dll .)",
+      "Bash(cp -r piper-temp/piper/espeak-ng-data .)",
+      "Bash(./piper.exe --model voices/en_US-lessac-medium.onnx --output_file /tmp/test.wav)",
+      "Read(//tmp/**)"
     ]
   }
 }

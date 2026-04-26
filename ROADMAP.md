@@ -77,6 +77,14 @@
 - [ ] Apple Sign In
 - [ ] Session management
 
+### Voice Assistant Enhancement 🎤
+- [ ] Install Piper TTS binary
+- [ ] Download Hebrew + English voice models (.onnx)
+- [ ] VT-Spec v1 voice templates
+- [ ] Full Recipe Book voice integration ("add recipe by voice")
+- [ ] "Add recipe by voice" feature
+- [ ] Voice cloning with Coqui XTTS v2 (Phase 2)
+
 ### Session 12 — More Features ✨
 - [ ] Meal planner (weekly)
 - [ ] Shopping list from recipe

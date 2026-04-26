@@ -6,3 +6,9 @@ node_modules/
 *.pem
 .claude/
 gen-cert.js
+piper.exe
+*.dll
+libtashkeel_model.ort
+espeak-ng-data/
+voices/*.onnx
+voices/*.onnx.json

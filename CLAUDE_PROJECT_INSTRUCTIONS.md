@@ -17,8 +17,8 @@ Project: My Recipe Book
 Developer: Zeev (vitport)
 GitHub: github.com/vitport/recipe-book
 Local: C:\Users\Vit\Desktop\recipe-book\
-Server: http://localhost:8080
-Network: http://192.168.1.2:8080
+HTTP:  http://localhost:8080  |  http://192.168.1.2:8080
+HTTPS: https://localhost:8443 |  https://192.168.1.2:8443  ← use for voice search on LAN
 Tests: http://localhost:8080/test.html
 ```
 
@@ -94,6 +94,14 @@ C:\Users\Vit\Desktop\recipe-book\server.js — NOT modified ✅
 | parseRecipeText(text) | Manual parser (fallback) |
 | detectLang(text) | Detect he/en/ru |
 | exportRecipePDF(id) | Export recipe as PDF |
+| askMicPermission() | Show mic popup or start voice search |
+| grantMicPermission() | Request mic via SpeechRecognition probe |
+| startVoiceSearch() | Start recording with full visual feedback |
+| voiceSearchIntent(text) | Parse speech with Mistral, apply filters |
+| voiceSetF(type, val) | Set filter pill + flt state (global helper) |
+| _micBtn(state) | Update mic button icon/state/disabled |
+| _micStatus(msg,hide,state) | Update status pill below search bar |
+| selectAllLogs() | Select all text in debug log panel |
 
 ### server.js endpoints
 | Endpoint | Method | Purpose |
@@ -104,6 +112,9 @@ C:\Users\Vit\Desktop\recipe-book\server.js — NOT modified ✅
 | /api/ollama/generate | POST | Proxy to Mistral |
 | /api/ollama/release | POST | Free Mistral RAM |
 | /api/proxy-image | GET | Download image server-side |
+| /api/fetch-url | GET | Fetch external URL server-side |
+
+HTTP port 8080 + HTTPS port 8443 (requires cert.pem/key.pem — run `node gen-cert.js` once)
 
 ---
 
@@ -121,30 +132,32 @@ C:\Users\Vit\Desktop\recipe-book\server.js — NOT modified ✅
 
 ## Test Suite
 
-- Location: http://localhost:8080/test.html
-- Total tests: 75+
-- Series 1: Infrastructure (100%)
-- Series 2: Features (100%)  
-- Series 3: AI Deep Tests (100%)
+- Location: http://localhost:8080/test.html (or https://...:8443/test.html for HTTPS)
+- Total tests: 72 (as of Session 7)
+- Series 1: Infrastructure — server, libraries, HTTPS (test 1.1.8)
+- Series 2: Features — CRUD, AI parse, PDF, photos, voice search (2.6.x)
+- Series 3: AI Deep Tests — Mistral self-eval, recipe quality, cross-language
 - Run after EVERY feature change
-- Export JSON report for analysis
+- Export HTML report for analysis
 
 ---
 
-## Current Issues (as of Session 5)
+## Session History
 
-1. **Image download CORS** — need server proxy for external images
-2. **Ollama memory** — need to call releaseOllama() after image processing
-3. **"Best: ?" display** — field name mismatch in test [3.1]
+| Session | Key Features |
+|---------|-------------|
+| 1–4 | Core CRUD, AI parsing, multi-language |
+| 5 | PDF export, OCR, test suite |
+| 6 | CORS fix, server proxy, Schema.org parsing, debug mode |
+| 7 | Voice search (SpeechRecognition + Mistral), mic permission popup, HTTPS on port 8443, visual recording feedback, debug Select All |
 
 ---
 
 ## Planned Next Features
 
-1. Fix image CORS and memory issues (Session 6)
-2. Multi-user support (Session 7+)
-3. Firebase Authentication (Session 8+)
-4. Cloud deployment (Future)
+1. Multi-user support (Session 8+)
+2. Firebase Authentication (Session 9+)
+3. Cloud deployment (Future)
 
 ---
 

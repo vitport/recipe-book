@@ -3,3 +3,6 @@ files.zip
 node_modules/
 *.zip
 .claude/
+cert.pem
+key.pem
+gen-cert.js

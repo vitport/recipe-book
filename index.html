@@ -45,10 +45,32 @@ a{color:var(--primary);}
 .hdr-sub{color:rgba(255,255,255,.88);font-size:1rem;margin-bottom:1.4rem;font-weight:600;}
 .search-wrap{position:relative;max-width:560px;margin:0 auto;}
 .search-wrap .ico{position:absolute;left:1.1rem;top:50%;transform:translateY(-50%);font-size:1.1rem;pointer-events:none;}
-#search{width:100%;padding:.85rem 1rem .85rem 3rem;border:none;border-radius:50px;
+#search{width:100%;padding:.85rem 3rem .85rem 3rem;border:none;border-radius:50px;
   font-size:1rem;font-family:'Nunito',sans-serif;outline:none;
   box-shadow:0 4px 16px rgba(0,0,0,.13);transition:var(--ease);}
 #search:focus{box-shadow:0 4px 24px rgba(0,0,0,.22);transform:scale(1.02);}
+/* ── MIC BUTTON (SESSION 7) ── */
+.mic-btn{position:absolute;right:.7rem;top:50%;transform:translateY(-50%);
+  background:var(--orange);border:none;border-radius:50%;width:2rem;height:2rem;
+  font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:background .2s,transform .2s;color:#fff;line-height:1;}
+.mic-btn:hover{background:#e06200;transform:translateY(-50%) scale(1.1);}
+.mic-btn.recording{background:#e03030;animation:mic-pulse 1s infinite;}
+.mic-btn.processing{background:#888;cursor:not-allowed;opacity:.8;}
+@keyframes mic-pulse{0%,100%{box-shadow:0 0 0 0 rgba(224,48,48,.6);}50%{box-shadow:0 0 0 6px rgba(224,48,48,0);}}
+#mic-status{position:absolute;top:calc(100% + .4rem);left:50%;transform:translateX(-50%);
+  white-space:nowrap;font-size:.82rem;color:#fff;background:rgba(0,0,0,.55);
+  padding:.25rem .75rem;border-radius:20px;pointer-events:none;display:none;transition:background .2s;}
+#mic-status.listening{background:rgba(220,38,38,.85);}
+#mic-status.processing{background:rgba(37,99,235,.8);}
+#mic-status.done{background:rgba(22,163,74,.85);}
+#mic-status.error{background:rgba(185,28,28,.85);}
+/* ── SEARCH BAR RECORDING STATE (SESSION 7) ── */
+#search.recording{animation:search-pulse 1.2s ease-in-out infinite;}
+@keyframes search-pulse{
+  0%,100%{box-shadow:0 0 0 2px rgba(255,107,53,.7),0 4px 16px rgba(0,0,0,.13);}
+  50%{box-shadow:0 0 0 5px rgba(255,107,53,.2),0 4px 16px rgba(0,0,0,.13);}}
+#search.interim{color:#aaa;font-style:italic;}
 
 /* ── ACTION BAR ── */
 .action-bar{display:flex;gap:.5rem;justify-content:flex-end;align-items:center;
@@ -452,6 +474,8 @@ mark.hl{background:#FFE082;border-radius:3px;padding:0 2px;}
   <div class="search-wrap">
     <span class="ico">🔍</span>
     <input id="search" class="finput" type="search" placeholder="Search recipes, ingredients…" autocomplete="off">
+    <button id="mic-btn" class="mic-btn" onclick="askMicPermission()" title="Voice search" style="display:none">🎤</button>
+    <span id="mic-status"></span>
   </div>
 </header>
 
@@ -832,6 +856,21 @@ mark.hl{background:#FFE082;border-radius:3px;padding:0 2px;}
   </div>
 </div>
 
+<!-- ═══════════════ MIC PERMISSION MODAL ═══════════════ -->
+<div class="overlay" id="m-mic-permission" style="display:none" onclick="overlayClick(event,'m-mic-permission')">
+  <div class="modal" style="max-width:380px" onclick="event.stopPropagation()">
+    <div class="modal-body" style="text-align:center;padding:2.2rem 2rem 1.8rem">
+      <div style="font-size:3.5rem;margin-bottom:.75rem">🎤</div>
+      <h2 style="font-size:1.3rem;font-weight:900;margin-bottom:.75rem">Voice Search</h2>
+      <p style="color:var(--muted);font-size:.93rem;line-height:1.55;margin-bottom:1.6rem">To use voice search, we need access to your microphone. Your voice is processed locally and never stored.</p>
+      <div style="display:flex;flex-direction:column;gap:.65rem">
+        <button class="btn btn-primary" style="width:100%" onclick="grantMicPermission()">Allow Microphone</button>
+        <button class="btn btn-ghost" style="width:100%" onclick="closeM('m-mic-permission')">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Toast & hidden inputs -->
 <div id="toast-box"></div>
 <input type="file" id="inp-json" accept=".json" style="display:none" onchange="handleJSON(event)">
@@ -844,6 +883,7 @@ mark.hl{background:#FFE082;border-radius:3px;padding:0 2px;}
   <div id="dbg-hdr">
     <span id="dbg-hdr-title">🐛 Debug Log</span>
     <div id="dbg-hdr-btns">
+      <button class="dbg-btn" onclick="selectAllLogs()">📋 Select All</button>
       <button class="dbg-btn" onclick="document.getElementById('dbg-log').innerHTML=''">🗑️ Clear</button>
       <button class="dbg-btn" onclick="exitDebugMode()">✕ Exit Debug Mode</button>
     </div>
@@ -884,6 +924,16 @@ if (DEBUG) {
   panel.style.height  = initH;
   document.body.style.paddingBottom = initH;
 }
+function selectAllLogs(){
+  const el=document.getElementById('dbg-log');
+  if(!el)return;
+  const range=document.createRange();
+  range.selectNodeContents(el);
+  const sel=window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
 function exitDebugMode() {
   const u = new URL(location.href);
   u.searchParams.delete('debug');
@@ -921,6 +971,216 @@ function _dbgDragEnd() {
   const h = document.getElementById('dbg-panel').style.height;
   if (h) localStorage.setItem('dbg-panel-height', h);
 }
+
+// ═══ SESSION 7: Voice Search with Mistral Intent ═══
+(function initMicBtn(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  console.log('SpeechRecognition available:', !!(window.SpeechRecognition||window.webkitSpeechRecognition));
+  if(SR) document.getElementById('mic-btn').style.display='flex';
+})();
+
+// ═══ SESSION 7: Mic Permission Popup ═══
+function askMicPermission(){
+  console.log('askMicPermission called');
+  dbg('🎤 Mic button clicked');
+  if(localStorage.getItem('mic-permission')==='granted'){
+    startVoiceSearch();
+    return;
+  }
+  document.getElementById('m-mic-permission').style.display='flex';
+}
+
+function grantMicPermission(){
+  console.log('grantMicPermission called');
+  dbg('🎤 Allow button clicked');
+  closeM('m-mic-permission');
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  const probe=new SR();
+  probe.onstart=()=>{
+    probe.stop();
+    localStorage.setItem('mic-permission','granted');
+    startVoiceSearch();
+  };
+  probe.onerror=e=>{
+    if(e.error==='not-allowed'){
+      localStorage.removeItem('mic-permission');
+      toast('🎤 Microphone access denied. Please allow in browser settings.','err');
+    }else{
+      // other errors (network, aborted) — permission was granted, proceed
+      localStorage.setItem('mic-permission','granted');
+      startVoiceSearch();
+    }
+  };
+  probe.start();
+}
+
+// ═══ SESSION 7: Voice Search Visual Feedback ═══
+function _micStatus(msg,hide,state){
+  const el=document.getElementById('mic-status');
+  if(!el)return;
+  el.textContent=msg;
+  el.className=state||'';
+  el.style.display=msg?'block':'none';
+  if(hide) setTimeout(()=>{el.style.display='none';},2000);
+}
+
+function _micBtn(state){
+  const btn=document.getElementById('mic-btn');
+  if(!btn)return;
+  btn.classList.remove('recording','processing');
+  btn.disabled=false;
+  if(state==='recording'){btn.classList.add('recording');btn.textContent='🔴';}
+  else if(state==='processing'){btn.classList.add('processing');btn.textContent='⏳';btn.disabled=true;}
+  else{btn.textContent='🎤';}
+}
+
+// calls setF() with the correct pill element — also used by test suite
+function voiceSetF(type,val){
+  const pillsId=(type==='dish'?'dish':'kosher')+'-pills';
+  const el=document.querySelector('#'+pillsId+' .pill[data-v="'+val+'"]');
+  if(el) setF(type,val,el);
+}
+
+async function voiceSearchIntent(speechText){
+  dbg('🤖 Parsing voice intent: '+speechText);
+  _micStatus('⏳ Mistral is thinking…',false,'processing');
+  const VALID_DISH=['breakfast','lunch','dinner','dessert','snack','soup','salad','side-dish'];
+  const VALID_KOSHER=['meat','dairy','pareve','non-kosher'];
+
+  // reset all filters before applying new ones
+  dbg('🔄 Voice: resetting all filters');
+  voiceSetF('dish','all');
+  voiceSetF('kosher','all');
+  document.getElementById('search').value='';
+  render();
+
+  try{
+    const prompt=`Recipe app. User said: "${speechText}"
+Return ONLY valid JSON, no explanation, no extra text:
+{"query":"FOOD_WORD","dishType":null,"kosherType":null}
+
+Rules:
+- query: copy the EXACT food word the user said. Keep original language.
+  Hebrew example: user says גולש → query is גולש
+  English example: user says pasta → query is pasta
+  NEVER put instructions or descriptions in query field.
+- dishType: ONLY set if user clearly mentioned meal time:
+  ערב/dinner/вечер → dinner
+  בוקר/breakfast/утро → breakfast
+  צהריים/lunch/обед → lunch
+  Otherwise → null
+- kosherType: ONLY set if user clearly mentioned food type:
+  בשר/meat/мясо → meat
+  חלבי/dairy/молочное → dairy
+  Otherwise → null
+- When unsure → use null
+No ellipsis. No truncation. JSON only.`;
+    const body={model:'mistral:latest',prompt,stream:false};
+    const r=await fetch('/api/ollama/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:AbortSignal.timeout(30000)});
+    if(!r.ok) throw new Error('Ollama HTTP '+r.status);
+    const d=await r.json();
+    const raw=(d.response||'').trim();
+    let intent={};
+    try{
+      const m=raw.match(/\{[\s\S]*?\}/);
+      if(m) intent=JSON.parse(m[0]);
+    }catch(e){}
+    dbg('🤖 Voice intent raw: '+JSON.stringify(intent));
+    const rawQuery=(intent.query||'').trim();
+    const badQuery=!rawQuery||rawQuery==='FOOD_WORD'||rawQuery.split(/\s+/).length>5;
+    const finalQuery=badQuery?speechText:rawQuery;
+    const dish=VALID_DISH.includes((intent.dishType||'').toLowerCase())?intent.dishType.toLowerCase():null;
+    const kosher=VALID_KOSHER.includes((intent.kosherType||'').toLowerCase())?intent.kosherType.toLowerCase():null;
+    document.getElementById('search').value=finalQuery;
+    q=finalQuery;
+    if(dish!==null) voiceSetF('dish',dish);
+    if(kosher!==null) voiceSetF('kosher',kosher);
+    render(); updateStats();
+    dbg('✅ Voice search applied: q="'+finalQuery+'" dish='+(dish||'—')+' kosher='+(kosher||'—'));
+  }catch(e){
+    dbg('⚠️ Voice intent failed, using raw text: '+speechText,'warn');
+    voiceSetF('dish','all');
+    voiceSetF('kosher','all');
+    document.getElementById('search').value=speechText;
+    q=speechText;
+    render(); updateStats();
+  }finally{
+    await releaseOllama();
+    _micBtn();
+    _micStatus('✅ Done!',true,'done');
+  }
+}
+
+function startVoiceSearch(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){alert('Voice search is not supported in this browser.');return;}
+  const btn=document.getElementById('mic-btn');
+  if(btn.classList.contains('recording')) return;
+  const searchEl=document.getElementById('search');
+  const origPlaceholder=searchEl.placeholder;
+
+  function resetSearch(){
+    searchEl.placeholder=origPlaceholder;
+    searchEl.classList.remove('recording','interim');
+  }
+
+  const rec=new SR();
+  rec.continuous=false;
+  rec.interimResults=true;
+  const langs=['he-IL','ru-RU','en-US'];
+  rec.lang=langs[0];
+  dbg('🎤 Voice recording started');
+
+  _micBtn('recording');
+  searchEl.value='';
+  searchEl.placeholder='🎤 Listening... speak now';
+  searchEl.classList.add('recording');
+  _micStatus('🎤 Listening…',false,'listening');
+
+  let stopped=false,gotFinal=false,hadError=false;
+  const autoStop=setTimeout(()=>{if(!stopped){stopped=true;rec.stop();}},10000);
+
+  rec.onresult=e=>{
+    const results=Array.from(e.results);
+    const interim=results.filter(r=>!r.isFinal).map(r=>r[0].transcript).join(' ');
+    const final=results.filter(r=>r.isFinal).map(r=>r[0].transcript).join(' ').trim();
+
+    if(interim&&!final){
+      searchEl.value=interim;
+      searchEl.classList.add('interim');
+    }
+
+    if(results.every(r=>r.isFinal)&&final){
+      clearTimeout(autoStop);stopped=true;gotFinal=true;
+      dbg('🎤 Heard: '+final);
+      searchEl.value=final;
+      searchEl.classList.remove('interim');
+      resetSearch();
+      _micBtn('processing');
+      voiceSearchIntent(final);
+    }
+  };
+
+  rec.onerror=e=>{
+    clearTimeout(autoStop);stopped=true;hadError=true;
+    dbg('🎤 Speech error: '+e.error,'warn');
+    resetSearch();
+    _micBtn();
+    _micStatus('❌ Could not hear you',true,'error');
+  };
+
+  rec.onend=()=>{
+    clearTimeout(autoStop);
+    resetSearch();
+    if(!gotFinal&&!hadError){
+      _micBtn();
+      _micStatus('❌ Could not hear you',true,'error');
+    }
+  };
+
+  rec.start();
+}
+// END SESSION 7: Voice Search
 
 // PDF.js worker — set immediately and also lazily in handlePDF for reliability
 const PDF_WORKER_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';

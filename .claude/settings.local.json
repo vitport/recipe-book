@@ -15,7 +15,12 @@
       "Bash(git -C /c/Users/Vit/Desktop/recipe-book status --short)",
       "Bash(git *)",
       "Bash(echo \"server.js image-picker refs: $?\")",
-      "Bash(grep -v \"//.*corsproxy\\\\|//.*thingproxy\")"
+      "Bash(grep -v \"//.*corsproxy\\\\|//.*thingproxy\")",
+      "Bash(node gen-cert.js)",
+      "Bash(node -e \"const s=require\\('selfsigned'\\);const p=s.generate\\([{name:'commonName',value:'localhost'}],{days:1}\\);console.log\\(Object.keys\\(p\\)\\);\")",
+      "Bash(node -e \"const s=require\\('selfsigned'\\);const p=s.generate\\([{name:'commonName',value:'localhost'}],{days:1}\\);console.log\\(JSON.stringify\\(p\\)\\);\")",
+      "Bash(node -e \"const s=require\\('selfsigned'\\);console.log\\(typeof s, typeof s.generate, Object.keys\\(s\\)\\);\")",
+      "Bash(timeout 3 node server.js)"
     ]
   }
 }

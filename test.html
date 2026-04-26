@@ -199,7 +199,7 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
 </div>
 
 <div class="ctrl-bar">
-  <a class="btn" href="/?debug=true" style="background:linear-gradient(135deg,#FF6B35,#FFB347);color:#fff;text-decoration:none;box-shadow:0 4px 14px rgba(255,107,53,.3)">← Return to App</a>
+  <button class="btn" onclick="window.location.href=window.location.protocol==='https:'?'https://'+window.location.hostname+':8443/?debug=true':'/?debug=true'" style="background:linear-gradient(135deg,#FF6B35,#FFB347);color:#fff;box-shadow:0 4px 14px rgba(255,107,53,.3)">← Return to App</button>
   <button class="btn btn-green"   id="btnRunAll"    onclick="startTests('all')">▶ Run All Tests</button>
   <button class="btn btn-orange"  id="btnRunFailed" onclick="startTests('failed')" disabled>↺ Run Failed Only</button>
   <button class="btn btn-red"     id="btnStop"      onclick="stopTests()" disabled>⏹ Stop Tests</button>
@@ -572,6 +572,17 @@ def('1.1.7',1,'1.1 Server Tests','GET /api/fetch-url proxies external URLs',asyn
   const hasDoc=d.html.includes('<html')||d.html.includes('<!DOCTYPE')||d.html.includes('<!doctype');
   if(!hasDoc) throw new Error('Response does not look like an HTML document');
   return{details:`Fetched ${d.html.length.toLocaleString()} chars in ${ms}ms`};
+});
+
+def('1.1.8',1,'1.1 Server Tests','HTTPS server accessible on port 8443',async()=>{
+  const url=`https://${window.location.hostname}:8443/recipes.json`;
+  let r;
+  try{ r=await fetch(url,{signal:AbortSignal.timeout(5000)}); }
+  catch(e){ throw skipErr('HTTPS server not reachable: '+e.message); }
+  if(!r.ok) throw new Error(`HTTP ${r.status}`);
+  const d=await r.json();
+  if(!Array.isArray(d.recipes)) throw new Error('Response is not a recipes array');
+  return{details:`HTTPS OK — ${d.recipes.length} recipes at ${url}`};
 });
 
 // 1.2 Libraries
@@ -1160,6 +1171,51 @@ def('2.5.5',2,'2.5 Photo Manager','🤖 Mistral recommends best photo for recipe
   if(!best) throw new Error('Mistral did not return a best image');
   return{details:`Best: …${best.slice(-40)} (${score}/10) — ${v.reason||''}`,aiVerdict:v,score};
 });
+
+// ═══ SESSION 7: Voice Search Tests ═══
+def('2.6.1',2,'2.6 Voice Search','Web Speech API available in browser',async()=>{
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR) throw skipErr('SpeechRecognition not supported in this browser');
+  if(typeof SR!=='function') throw new Error('SpeechRecognition is not a constructor');
+  return{details:'SpeechRecognition constructor available'};
+});
+
+def('2.6.2',2,'2.6 Voice Search','🤖 Voice search Mistral intent parsing',async()=>{
+  if(!ollamaOK) throw skipErr('Ollama not available');
+  const speechText='show me meat dishes for dinner';
+  const v=await askMistral(`User said: "${speechText}".\nReturn JSON only: {"query":"","dishType":null,"kosherType":null}\ndishType must be: breakfast/lunch/dinner/dessert/snack/soup/salad/side-dish or null\nkosherType must be: meat/dairy/pareve/non-kosher or null\nNo ellipsis. No truncation.`);
+  if(!v||typeof v.query==='undefined') throw new Error('Mistral did not return a query field. Got: '+JSON.stringify(v));
+  if(typeof v.query!=='string') throw new Error('query field is not a string');
+  return{details:`query="${v.query}" dishType="${v.dishType||'null'}" kosherType="${v.kosherType||'null'}"`,aiVerdict:v,score:8};
+});
+def('2.6.3',2,'2.6 Voice Search','Mic permission popup exists in DOM',async()=>{
+  const popup=document.getElementById('m-mic-permission');
+  if(!popup) throw new Error('Element #m-mic-permission not found in DOM');
+  const btns=Array.from(popup.querySelectorAll('button'));
+  const allowBtn=btns.find(b=>b.textContent.includes('Allow Microphone'));
+  if(!allowBtn) throw new Error('No "Allow Microphone" button found inside #m-mic-permission');
+  return{details:'#m-mic-permission exists and contains "Allow Microphone" button'};
+});
+
+def('2.6.4',2,'2.6 Voice Search','Debug log Select All button exists',async()=>{
+  const panel=document.getElementById('dbg-panel');
+  if(!panel) throw new Error('Element #dbg-panel not found in DOM');
+  const btns=Array.from(panel.querySelectorAll('button'));
+  const selBtn=btns.find(b=>b.textContent.includes('Select All'));
+  if(!selBtn) throw new Error('No "Select All" button found inside #dbg-panel');
+  return{details:'#dbg-panel contains "Select All" button'};
+});
+
+def('2.6.5',2,'2.6 Voice Search','Voice search filter reset works',async()=>{
+  if(typeof window.voiceSetF!=='function') throw new Error('voiceSetF is not a global function');
+  window.voiceSetF('dish','all');
+  window.voiceSetF('kosher','all');
+  if(window.flt.dish!=='all') throw new Error(`flt.dish is "${window.flt.dish}", expected "all"`);
+  if(window.flt.kosher!=='all') throw new Error(`flt.kosher is "${window.flt.kosher}", expected "all"`);
+  return{details:'voiceSetF("dish","all") and voiceSetF("kosher","all") both reset correctly'};
+});
+
+// END SESSION 7: Voice Search Tests
 
 // 3.1 Self-Evaluation
 def('3.1',3,'3.1 Mistral Self-Evaluation','🤖 Mistral evaluates its own recipe parsing ability',async()=>{

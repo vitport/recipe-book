@@ -208,17 +208,30 @@ app.get('/api/fetch-url', (req, res) => {
   doFetch(url, 3);
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  let localIP = 'localhost';
-  for (const ifaces of Object.values(os.networkInterfaces())) {
-    for (const iface of ifaces) {
-      if (iface.family === 'IPv4' && !iface.internal) {
-        localIP = iface.address;
-        break;
-      }
-    }
+let localIP = 'localhost';
+for (const ifaces of Object.values(os.networkInterfaces())) {
+  for (const iface of ifaces) {
+    if (iface.family === 'IPv4' && !iface.internal) { localIP = iface.address; break; }
   }
+}
+
+// HTTP server (port 8080)
+http.createServer(app).listen(8080, '0.0.0.0', () => {
   console.log('\n🍳  Recipe Book running!');
-  console.log(`   Local:   http://localhost:${PORT}`);
-  console.log(`   Network: http://${localIP}:${PORT}\n`);
+  console.log(`HTTP  → http://localhost:8080`);
+  console.log(`HTTP  → http://${localIP}:8080`);
 });
+
+// HTTPS server (port 8443)
+try {
+  const sslOptions = {
+    key: fs.readFileSync('key.pem'),
+    cert: fs.readFileSync('cert.pem'),
+  };
+  https.createServer(sslOptions, app).listen(8443, '0.0.0.0', () => {
+    console.log(`HTTPS → https://localhost:8443`);
+    console.log(`HTTPS → https://${localIP}:8443 ← use this for voice search!\n`);
+  });
+} catch(e) {
+  console.log('HTTPS not available — run: node gen-cert.js first\n');
+}

@@ -208,6 +208,152 @@ app.get('/api/fetch-url', (req, res) => {
   doFetch(url, 3);
 });
 
+// ── SEARCH PROXY (multi-mode) ─────────────────────────────────────────
+// Supports: mode=api (Brave/Google) and mode=scrape (Google/Bing/rotate)
+
+const SEARCH_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+
+function searchFetch(url, headers = {}) {
+  return new Promise((resolve, reject) => {
+    const mod = url.startsWith('https') ? https : http;
+    let req;
+    const timer = setTimeout(() => { if (req) req.destroy(); reject(new Error('Search timeout')); }, 10000);
+    req = mod.get(url, { headers: { 'User-Agent': SEARCH_UA, 'Accept-Language': 'en-US,en;q=0.9', ...headers } }, r => {
+      let data = '';
+      r.on('data', c => data += c);
+      r.on('end', () => { clearTimeout(timer); resolve({ status: r.statusCode, body: data }); });
+    });
+    req.on('error', e => { clearTimeout(timer); reject(e); });
+  });
+}
+
+function searchPost(url, body, headers = {}) {
+  return new Promise((resolve, reject) => {
+    const buf = Buffer.from(body);
+    const u = new URL(url);
+    let req;
+    const timer = setTimeout(() => { if (req) req.destroy(); reject(new Error('Search timeout')); }, 10000);
+    req = https.request({
+      hostname: u.hostname, path: u.pathname + u.search, method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': buf.length, ...headers }
+    }, r => {
+      let data = '';
+      r.on('data', c => data += c);
+      r.on('end', () => { clearTimeout(timer); resolve({ status: r.statusCode, body: data }); });
+    });
+    req.on('error', e => { clearTimeout(timer); reject(e); });
+    req.write(buf);
+    req.end();
+  });
+}
+
+function scrapeGoogleHTML(html) {
+  const results = [];
+  const urlRe = /href="\/url\?q=(https?:\/\/(?!www\.google\.)[^&"]+)/g;
+  const h3Re = /<h3[^>]*>([\s\S]*?)<\/h3>/gi;
+  const urls = [], titles = [];
+  let m;
+  while ((m = urlRe.exec(html)) !== null) {
+    try { urls.push(decodeURIComponent(m[1])); } catch(e) { urls.push(m[1]); }
+  }
+  while ((m = h3Re.exec(html)) !== null) {
+    const t = m[1].replace(/<[^>]+>/g, '').trim();
+    if (t && t.length > 3 && t.length < 200) titles.push(t);
+  }
+  for (let i = 0; i < Math.min(urls.length, titles.length, 5); i++) {
+    results.push({ title: titles[i], url: urls[i], snippet: '' });
+  }
+  return results;
+}
+
+function scrapeBingHTML(html) {
+  const results = [];
+  const blockRe = /<li[^>]*class="b_algo"[^>]*>([\s\S]*?)<\/li>/gi;
+  let m;
+  while ((m = blockRe.exec(html)) !== null) {
+    const block = m[1];
+    const tM = /<h2[^>]*>[\s\S]*?<a[^>]*href="(https?:\/\/[^"]+)"[^>]*>([\s\S]*?)<\/a>/i.exec(block);
+    const sM = /<p[^>]*class="b_lineclamp[^"]*"[^>]*>([\s\S]*?)<\/p>/i.exec(block) || /<p[^>]*>([\s\S]*?)<\/p>/i.exec(block);
+    if (tM) {
+      results.push({
+        title: tM[2].replace(/<[^>]+>/g, '').trim(),
+        url: tM[1],
+        snippet: sM ? sM[1].replace(/<[^>]+>/g, '').trim().slice(0, 200) : ''
+      });
+    }
+    if (results.length >= 5) break;
+  }
+  return results;
+}
+
+app.get('/api/search', async (req, res) => {
+  const q = (req.query.q || '').trim();
+  if (!q) return res.json({ results: [], query: '', total: 0 });
+
+  const mode     = req.query.mode || 'scrape';
+  const provider = req.query.provider || 'brave';
+  const apiKey   = req.query.key || '';
+  const cx       = req.query.cx || '';
+  const engine   = req.query.engine || 'rotate';
+
+  try {
+    let results = [];
+
+    if (mode === 'api' && provider === 'serper') {
+      const lang = req.query.lang || 'en';
+      const payload = JSON.stringify({ q: q + ' recipe', num: 5, hl: lang });
+      const r = await searchPost('https://google.serper.dev/search', payload, { 'X-API-KEY': apiKey });
+      const d = JSON.parse(r.body);
+      results = (d.organic || []).map(x => ({
+        title: x.title, url: x.link, snippet: x.snippet || '', image: x.imageUrl || ''
+      }));
+      console.log(`Serper API: ${results.length} results for "${q}"`);
+
+    } else if (mode === 'api' && provider === 'brave') {
+      const r = await searchFetch(
+        `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(q)}&count=5`,
+        { 'Accept': 'application/json', 'Accept-Encoding': 'gzip', 'X-Subscription-Token': apiKey }
+      );
+      const d = JSON.parse(r.body);
+      results = (d.web && d.web.results || []).map(x => ({
+        title: x.title, url: x.url, snippet: x.description || '', image: x.thumbnail && x.thumbnail.src || ''
+      }));
+
+    } else if (mode === 'api' && provider === 'google') {
+      const r = await searchFetch(
+        `https://www.googleapis.com/customsearch/v1?q=${encodeURIComponent(q)}&key=${apiKey}&cx=${cx}&num=5`
+      );
+      const d = JSON.parse(r.body);
+      results = (d.items || []).map(x => ({
+        title: x.title, url: x.link, snippet: x.snippet || '',
+        image: x.pagemap && x.pagemap.cse_image && x.pagemap.cse_image[0] && x.pagemap.cse_image[0].src || ''
+      }));
+
+    } else if (mode === 'scrape' && engine === 'google') {
+      const r = await searchFetch(`https://www.google.com/search?q=${encodeURIComponent(q + ' recipe')}&num=10&hl=en`);
+      results = scrapeGoogleHTML(r.body);
+
+    } else if (mode === 'scrape' && engine === 'bing') {
+      const r = await searchFetch(`https://www.bing.com/search?q=${encodeURIComponent(q + ' recipe')}&count=10`);
+      results = scrapeBingHTML(r.body);
+
+    } else { // scrape + rotate: try Google, fallback to Bing
+      const gRes = await searchFetch(`https://www.google.com/search?q=${encodeURIComponent(q + ' recipe')}&num=10&hl=en`).catch(() => null);
+      if (gRes) results = scrapeGoogleHTML(gRes.body);
+      if (!results.length) {
+        const bRes = await searchFetch(`https://www.bing.com/search?q=${encodeURIComponent(q + ' recipe')}&count=10`).catch(() => null);
+        if (bRes) results = scrapeBingHTML(bRes.body);
+      }
+    }
+
+    console.log(`Search [${mode}/${mode === 'api' ? provider : engine}] "${q}": ${results.length} results`);
+    res.json({ results, query: q, total: results.length, mode, ...(mode === 'api' ? { provider } : { engine }) });
+  } catch(e) {
+    console.log(`Search error [${mode}]: ${e.message}`);
+    res.json({ results: [], error: e.message, query: q });
+  }
+});
+
 let localIP = 'localhost';
 for (const ifaces of Object.values(os.networkInterfaces())) {
   for (const iface of ifaces) {

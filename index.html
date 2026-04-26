@@ -10,6 +10,7 @@
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="/modules/SearchEngine.js"></script>
 <style>
 :root {
   --primary: #FF6B35;
@@ -50,7 +51,7 @@ a{color:var(--primary);}
   box-shadow:0 4px 16px rgba(0,0,0,.13);transition:var(--ease);}
 #search:focus{box-shadow:0 4px 24px rgba(0,0,0,.22);transform:scale(1.02);}
 /* ── MIC BUTTON (SESSION 7) ── */
-.mic-btn{position:absolute;right:.7rem;top:50%;transform:translateY(-50%);
+.mic-btn{position:absolute;right:1rem;top:50%;transform:translateY(-50%);
   background:var(--orange);border:none;border-radius:50%;width:2rem;height:2rem;
   font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;
   transition:background .2s,transform .2s;color:#fff;line-height:1;}
@@ -441,6 +442,43 @@ mark.hl{background:#FFE082;border-radius:3px;padding:0 2px;}
 .pm-url-row{display:flex;gap:.45rem;width:100%;margin-top:.4rem;}
 .pm-url-row .finput{flex:1;}
 
+/* ── INTERNET RESULTS (SESSION 8) ── */
+.internet-results{margin:1.5rem;border:2px solid var(--primary);border-radius:20px;overflow:hidden;display:none;}
+.internet-results-header{background:linear-gradient(135deg,#FF5722,#FFB347);padding:1rem 1.5rem;
+  display:flex;justify-content:space-between;align-items:center;}
+.internet-results-title{color:#fff;font-weight:800;font-size:1rem;}
+.internet-results-title small{font-weight:600;opacity:.85;font-size:.8rem;}
+.internet-results-close{background:rgba(255,255,255,.3);border:none;color:#fff;border-radius:50%;
+  width:28px;height:28px;cursor:pointer;font-size:1rem;}
+.internet-results-summary{background:#FFF3E0;padding:.75rem 1.5rem;font-size:.88rem;
+  color:var(--text);border-bottom:1px solid var(--border);font-style:italic;}
+.internet-results-loading{padding:1.5rem;text-align:center;color:var(--muted);
+  display:flex;align-items:center;justify-content:center;gap:1rem;background:#fff;}
+.internet-results-spinner{width:24px;height:24px;border:3px solid var(--border);
+  border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0;}
+.internet-results-list{background:#fff;}
+.internet-result-item{display:flex;gap:1rem;padding:1rem 1.5rem;border-bottom:1px solid var(--border);align-items:flex-start;}
+.internet-result-item:last-child{border-bottom:none;}
+.internet-result-image{width:80px;height:80px;object-fit:cover;border-radius:10px;flex-shrink:0;}
+.internet-result-content{flex:1;min-width:0;}
+.internet-result-title{font-weight:800;font-size:.95rem;margin-bottom:.3rem;color:var(--text);}
+.internet-result-snippet{font-size:.83rem;color:var(--muted);margin-bottom:.3rem;}
+.internet-result-url{font-size:.75rem;color:var(--muted);margin-bottom:.4rem;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.internet-result-actions{display:flex;gap:.5rem;}
+.internet-result-link{font-size:.8rem;padding:.25rem .75rem;border-radius:20px;
+  background:#F3F4F6;color:var(--text);text-decoration:none;font-weight:700;}
+.internet-result-import{font-size:.8rem;padding:.25rem .75rem;border-radius:20px;
+  background:var(--primary);color:#fff;border:none;cursor:pointer;font-weight:700;}
+#web-search-btn{position:absolute;right:3.5rem;top:50%;transform:translateY(-50%);
+  background:var(--primary);border:none;border-radius:50%;width:2rem;height:2rem;
+  cursor:pointer;font-size:1rem;display:none;}
+#web-search-btn.visible{display:flex;align-items:center;justify-content:center;}
+#web-search-btn.searching{animation:pulse-orange 1s infinite;background:#FF5722;}
+@keyframes pulse-orange{
+  0%,100%{opacity:1;transform:translateY(-50%) scale(1);}
+  50%{opacity:.7;transform:translateY(-50%) scale(1.1);}}
+
 /* ── DEBUG PANEL ── */
 #dbg-panel{display:none;position:fixed;bottom:0;left:0;right:0;height:30vh;min-height:40px;
   background:#1a1a2e;border-top:none;flex-direction:column;z-index:9999;
@@ -474,6 +512,7 @@ mark.hl{background:#FFE082;border-radius:3px;padding:0 2px;}
   <div class="search-wrap">
     <span class="ico">🔍</span>
     <input id="search" class="finput" type="search" placeholder="Search recipes, ingredients…" autocomplete="off">
+    <button id="web-search-btn" onclick="triggerWebSearch()" title="Search on internet">🌐</button>
     <button id="mic-btn" class="mic-btn" onclick="askMicPermission()" title="Voice search" style="display:none">🎤</button>
     <span id="mic-status"></span>
   </div>
@@ -535,6 +574,7 @@ mark.hl{background:#FFE082;border-radius:3px;padding:0 2px;}
 <main class="main">
   <div class="grid" id="grid"></div>
 </main>
+<div id="internet-results" class="internet-results" style="display:none"></div>
 
 <!-- FAB -->
 <button class="fab" onclick="openAddModal()" title="Add recipe">＋</button>
@@ -1199,6 +1239,7 @@ let pendingText = '';
 let pendingPDFText = '';
 let ocrText = '';
 let delId = null;
+let searchDebounceTimer = null;
 let carIdx = 0;
 let carTotal = 0;
 let previewOpen = false;
@@ -1556,9 +1597,21 @@ function render() {
       <p>${recipes.length ? 'Try different search terms or filters.' : 'Click the ＋ button to add your first recipe!'}</p>
       ${!recipes.length ? '<button class="btn btn-primary" onclick="openAddModal()">Add First Recipe ✨</button>' : ''}
     </div>`;
+    // Session 8: debounced internet search when local results = 0
+    if (q && q.length > 1 && window.SearchEngine) {
+      clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = setTimeout(() => {
+        dbg('🌐 Local search returned 0 — triggering internet search');
+        SearchEngine.search(q);
+      }, 800);
+    } else if (window.SearchEngine) {
+      clearTimeout(searchDebounceTimer);
+      SearchEngine.hideResults();
+    }
     return;
   }
   g.innerHTML = list.map((r, i) => card(r, i)).join('');
+  if (window.SearchEngine) SearchEngine.hideResults();
 }
 
 function card(r, i) {
@@ -2954,7 +3007,12 @@ document.addEventListener('keydown', e => {
 });
 
 // ─── SEARCH ──────────────────────────────────────────────────────────
-document.getElementById('search').addEventListener('input', e => { q = e.target.value.trim(); render(); updateStats(); });
+document.getElementById('search').addEventListener('input', e => {
+  q = e.target.value.trim();
+  render(); updateStats();
+  const webBtn = document.getElementById('web-search-btn');
+  if (webBtn) webBtn.classList.toggle('visible', e.target.value.length > 0);
+});
 
 // ─── INIT ────────────────────────────────────────────────────────────
 async function init() {
@@ -2975,6 +3033,41 @@ async function init() {
 }
 
 init();
+
+// ═══ SESSION 8: Internet Search Integration ═══
+// Uses SearchEngine.js module (modules/SearchEngine.js)
+// Triggers automatically when local search returns 0 results
+// Manual trigger via 🌐 button in search bar
+function triggerWebSearch() {
+  const query = document.getElementById('search').value.trim();
+  if (!query) { toast('Type something to search on internet', 'err'); return; }
+  dbg('🌐 Manual web search triggered: ' + query);
+  SearchEngine.search(query);
+}
+
+SearchEngine.configure({
+  mode: 'auto',
+  apiProvider: 'serper',
+  apiKey: '3b2b3bea20ed53dd81b27c34c0bf7d21a241d272',
+  scrapeEngine: 'rotate',
+  useMistral: true,
+  onImport: (url) => {
+    dbg('🌐 Importing recipe from internet: ' + url);
+    const addBtn = document.getElementById('add-btn') || document.querySelector('button[onclick*="openAdd"]');
+    if (addBtn) addBtn.click(); else openAddModal();
+    setTimeout(() => {
+      const tabUrl = document.querySelector('.tab[onclick*="tp-url"]') || document.querySelector('[onclick*="tp-url"]');
+      if (tabUrl) tabUrl.click();
+      setTimeout(() => {
+        const urlInput = document.getElementById('inp-url');
+        if (urlInput) { urlInput.value = url; fetchURL(); }
+      }, 200);
+    }, 300);
+  },
+  lang: navigator.language?.startsWith('he') ? 'he' :
+        navigator.language?.startsWith('ru') ? 'ru' : 'en'
+});
+// END SESSION 8: Internet Search
 
 // ─── FUNCTION ALIASES (for test suite compatibility) ──────────────────
 function deleteRecipe(id) { return delR(id); }

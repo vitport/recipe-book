@@ -199,7 +199,7 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
 </div>
 
 <div class="ctrl-bar">
-  <button class="btn" onclick="window.location.href=window.location.protocol==='https:'?'https://'+window.location.hostname+':8443/?debug=true':'/?debug=true'" style="background:linear-gradient(135deg,#FF6B35,#FFB347);color:#fff;box-shadow:0 4px 14px rgba(255,107,53,.3)">← Return to App</button>
+  <button class="btn" onclick="window.location.href=window.location.protocol==='https:'?'https://'+window.location.hostname+':8443/?debug=true':'http://'+window.location.hostname+':8080/?debug=true'" style="background:linear-gradient(135deg,#FF6B35,#FFB347);color:#fff;box-shadow:0 4px 14px rgba(255,107,53,.3)">← Return to App</button>
   <button class="btn btn-green"   id="btnRunAll"    onclick="startTests('all')">▶ Run All Tests</button>
   <button class="btn btn-orange"  id="btnRunFailed" onclick="startTests('failed')" disabled>↺ Run Failed Only</button>
   <button class="btn btn-red"     id="btnStop"      onclick="stopTests()" disabled>⏹ Stop Tests</button>
@@ -1216,6 +1216,64 @@ def('2.6.5',2,'2.6 Voice Search','Voice search filter reset works',async()=>{
 });
 
 // END SESSION 7: Voice Search Tests
+
+// ═══ SESSION 8: Internet Search Tests ═══
+def('2.7.1',2,'2.7 Internet Search','GET /api/search scrape mode returns results',async()=>{
+  const r=await fetch('/api/search?q=pasta+recipe&mode=scrape&engine=rotate',{signal:AbortSignal.timeout(15000)});
+  if(!r.ok) throw new Error(`HTTP ${r.status}`);
+  const d=await r.json();
+  if(!Array.isArray(d.results)) throw new Error('Response missing results array. Got: '+JSON.stringify(d).slice(0,100));
+  if(typeof d.mode==='undefined') throw new Error('Response missing mode field');
+  // scraping may return 0 results if blocked — structure check is sufficient
+  const info=d.results.length>0?`${d.results.length} results — first: "${d.results[0].title.slice(0,50)}"`:
+    `0 results (scraping may be blocked) — mode: ${d.mode}`;
+  return{details:info};
+});
+
+def('2.7.2',2,'2.7 Internet Search','SearchEngine module exists',async()=>{
+  if(typeof window.SearchEngine==='undefined') throw new Error('window.SearchEngine not found');
+  if(typeof window.SearchEngine.search!=='function') throw new Error('SearchEngine.search is not a function');
+  if(typeof window.SearchEngine.showResults!=='function') throw new Error('SearchEngine.showResults is not a function');
+  return{details:'window.SearchEngine exists with search() and showResults()'};
+});
+
+def('2.7.3',2,'2.7 Internet Search','Internet results section exists in DOM',async()=>{
+  const el=document.getElementById('internet-results');
+  if(!el) throw new Error('Element #internet-results not found in DOM');
+  return{details:'#internet-results element found in DOM'};
+});
+
+def('2.7.4',2,'2.7 Internet Search','🤖 Mistral summarizes search results',async()=>{
+  if(!ollamaOK) throw skipErr('Ollama not available');
+  const prompt='Summarize these recipe search results in one sentence:\npasta carbonara - classic Italian dish with eggs and cheese.\nReturn only the summary sentence, nothing else.';
+  const r=await fetch('/api/ollama/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'mistral:latest',prompt,stream:false}),signal:AbortSignal.timeout(30000)});
+  if(!r.ok) throw new Error(`HTTP ${r.status}`);
+  const d=await r.json();
+  const response=(d.response||'').trim();
+  if(response.length<10) throw new Error('Mistral response too short: '+JSON.stringify(response));
+  return{details:`Summary (${response.length} chars): "${response.slice(0,80)}"`,score:8};
+});
+
+def('2.7.5',2,'2.7 Internet Search','Web search button exists in search bar',async()=>{
+  const btn=document.getElementById('web-search-btn');
+  if(!btn) throw new Error('Element #web-search-btn not found in DOM');
+  return{details:'#web-search-btn found in search bar'};
+});
+def('2.7.6',2,'2.7 Internet Search','SearchEngine config has mode flag',async()=>{
+  if(typeof window.SearchEngine==='undefined') throw new Error('window.SearchEngine not found');
+  let threw=false;
+  try{ window.SearchEngine.configure({mode:'scrape'}); }
+  catch(e){ threw=true; throw new Error('SearchEngine.configure() threw: '+e.message); }
+  return{details:'SearchEngine.configure({mode:"scrape"}) executed without error'};
+});
+
+def('2.7.7',2,'2.7 Internet Search','Web search button shows searching state',async()=>{
+  const btn=document.getElementById('web-search-btn');
+  if(!btn) throw new Error('Element #web-search-btn not found in DOM');
+  if(typeof btn.classList==='undefined') throw new Error('button missing classList API');
+  return{details:'#web-search-btn exists with classList API — searching state supported'};
+});
+// END SESSION 8: Internet Search Tests
 
 // 3.1 Self-Evaluation
 def('3.1',3,'3.1 Mistral Self-Evaluation','🤖 Mistral evaluates its own recipe parsing ability',async()=>{

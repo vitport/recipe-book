@@ -35,7 +35,7 @@ claude
 
 ---
 
-## Our 6 Rules (NEVER FORGET)
+## Our 8 Rules (NEVER FORGET)
 
 ### Rule 1 ⚠️ — Tests First
 Before coding ANY new feature:
@@ -78,6 +78,63 @@ If YES → build with:
 - Config object for customization
 - Works in any project via `<script src>`
 - Header comment with usage docs
+
+### Rule 7 🌐 — Web Search Configuration
+When using SearchEngine.js in any new product, always ask:
+
+**Question 1:** "Should web search use scraping or API?"
+- Scraping: free, no limits, no API key, legally gray area
+- API: reliable, legal, needs API key, has limits
+- Auto: API first, scrape as fallback
+
+**Question 2:** "Which API provider?"
+- Brave Search API (free 2000/month) 🦁 — recommended
+- Google Custom Search (free 100/day) 🔍
+- Bing Search API (free 1000/month) 🔷
+
+**Question 3:** "Which scrape engine?"
+- Google (best results, strict blocking)
+- Bing (good results, less strict)
+- Both with rotation
+
+Document the choice in code:
+```js
+SearchEngine.configure({
+  mode: 'api',              // 'api' | 'scrape' | 'auto'
+  apiProvider: 'brave',     // 'brave' | 'google' | 'bing'
+  scrapeEngine: 'google',   // 'google' | 'bing' | 'rotate'
+  apiKey: 'YOUR_KEY_HERE'
+});
+```
+
+### Rule 8 💾 — End of Session Checklist
+Before finishing EVERY session, always:
+
+1. 📝 Update ALL documentation:
+   - `PROJECT_STATE.md` — current status, known issues, next session plan
+   - `ROADMAP.md` — mark completed items
+   - `PROJECT_CONTEXT.md` — update feature list + test count
+   - `CLAUDE_PROJECT_INSTRUCTIONS.md` — update rules if new ones added
+   - `DEVELOPMENT_JOURNAL.md` — add session summary
+
+2. 🧪 Run full test suite:
+   - https://192.168.1.2:8443/test.html
+   - All tests must pass before commit
+
+3. 💾 Commit and push to GitHub:
+   ```powershell
+   git add .
+   git commit -m "Session X: description of what was built"
+   git push
+   ```
+
+4. ✅ Verify on GitHub:
+   - github.com/vitport/recipe-book
+   - Confirm latest commit is visible
+
+> Vitaly reminds Zeev at end of every session:
+> "Zeev, before we finish — Rule 8 checklist!
+>  Shall we update docs and push to GitHub?"
 
 ---
 

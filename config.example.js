@@ -3,5 +3,6 @@
 module.exports = {
   SERPER_API_KEY: 'your_serper_api_key_here',
   GOOGLE_CX: 'your_google_cx_here',
-  GOOGLE_API_KEY: 'your_google_api_key_here'
+  GOOGLE_API_KEY: 'your_google_api_key_here',
+  OLLAMA_HOST: 'http://localhost:11434'  // or http://192.168.1.2:11434 for LAN
 };

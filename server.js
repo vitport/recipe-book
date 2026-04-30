@@ -60,9 +60,10 @@ app.post('/save-recipes', (req, res) => {
 // Routes browser requests to Ollama, avoiding browser CORS restrictions.
 
 function ollamaRequest(method, ollamaPath, body, res) {
+  const ollamaUrl = new URL(config.OLLAMA_HOST || 'http://localhost:11434');
   const opts = {
-    hostname: 'localhost',
-    port: 11434,
+    hostname: ollamaUrl.hostname,
+    port: parseInt(ollamaUrl.port) || 11434,
     path: ollamaPath,
     method,
     headers: { 'Content-Type': 'application/json' },
@@ -91,6 +92,11 @@ app.post('/api/ollama/generate', (req, res) => {
 
 app.post('/api/ollama/release', (req, res) => {
   ollamaRequest('POST', '/api/generate', { model: 'mistral', keep_alive: 0 }, res);
+});
+
+// ── OLLAMA HOST INFO ─────────────────────
+app.get('/api/ollama/host', (req, res) => {
+  res.json({ host: config.OLLAMA_HOST, model: 'mistral:latest' });
 });
 
 // ── IMAGE PROXY ───────────────────────────────────────────────────────

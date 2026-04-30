@@ -35,7 +35,7 @@ claude
 
 ---
 
-## Our 9 Rules (NEVER FORGET)
+## Our 13 Rules (NEVER FORGET)
 
 ### Rule 1 ⚠️ — Tests First
 Before coding ANY new feature:
@@ -150,6 +150,40 @@ Each test page must:
 
 All test pages are linked from the `tests.html` hub page.
 
+### Rule 10 🐛 — Debug Mode Standard
+Every page in the project MUST have a debug panel:
+- Activated by `?debug=true` URL param
+- Fixed to bottom of screen, drag-resize via handle
+- Log entries colored: green (log), orange (warn), red (err), blue (info)
+- "📋 Select All" copies full log to clipboard
+- "🗑 Clear" wipes log
+- "✕ Exit" removes `?debug=true` from URL
+- `window.dbg(msg, level)` → VoiceAssistant and server also call `window.dbg` if present
+
+### Rule 11 🔑 — API Key Security
+API keys MUST never appear in client-side code or git history:
+- Store all secrets in `config.js` (already in `.gitignore`)
+- Deliver keys to browser ONLY via `/api/config/*` endpoints
+- `config.js` is a CommonJS module: `module.exports = { KEY: 'value' }`
+- Modules that need keys accept them via `configure({ apiKey })` — never hardcode
+- If a key is accidentally committed, rotate it immediately
+
+### Rule 12 🏗️ — Stateless Architecture
+Every module (`VoiceAssistant.js`, `SearchEngine.js`, etc.) must be stateless across calls:
+- Module-level state is allowed only for transient session data (`_isListening`, `_currentAudio`)
+- No module should persist data to disk or localStorage
+- All configuration lives in the `CONFIG` object, overridable via `configure()`
+- A module reset is: `configure({})` or page reload — no manual cleanup needed
+- Side effects (DOM, audio, network) are cleaned up in `stop()` / `hide()`
+
+### Rule 13 🔀 — Convergency of Flow
+Every multi-step user flow (voice input, language detection, search) must converge to a single clear resolution:
+- Every flow has exactly ONE terminal state: response spoken + orb idle
+- Error paths must also reach that terminal state (speak error, reset orb)
+- Re-entry points (garbled speech → re-listen) must not create infinite loops — max 1 re-listen per trigger
+- State transitions are explicit: idle → listening → detecting|thinking → speaking → idle
+- No flow should leave the UI in a broken state (e.g., orb stuck in "listening")
+
 ---
 
 ## File Map
@@ -194,6 +228,12 @@ All test pages are linked from the `tests.html` hub page.
 | SearchEngine.search(q) | Internet search (auto/api/scrape) |
 | SearchEngine.configure(opts) | Set mode/key/provider/onImport |
 | SearchEngine.hideResults() | Hide internet results panel |
+| OllamaClient.generate(prompt) | Generate text via Mistral |
+| OllamaClient.generateJSON(prompt) | Generate + parse JSON |
+| OllamaClient.status() | Check Ollama health |
+| OllamaClient.release() | Free Mistral RAM |
+| OllamaClient.extractJSON(text) | Safe JSON extraction |
+| OllamaClient.configure({ useDirectMode, directHost, model }) | Configure client |
 
 ### server.js endpoints
 | Endpoint | Method | Purpose |
@@ -207,6 +247,10 @@ All test pages are linked from the `tests.html` hub page.
 | /api/fetch-url | GET | Fetch external URL server-side |
 | /api/config/search | GET | Return API keys to browser securely |
 | /api/search | GET | Internet search (Serper API + scrape fallback) |
+| /api/ollama/host | GET | Return configured Ollama host + model |
+
+`OLLAMA_HOST` in `config.js` controls the Ollama server for all apps.
+Change to `http://192.168.1.2:11434` to use LAN Ollama instead of localhost.
 
 HTTP port 8080 + HTTPS port 8443 (requires cert.pem/key.pem — run `node gen-cert.js` once)
 

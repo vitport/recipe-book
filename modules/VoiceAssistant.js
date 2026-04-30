@@ -44,6 +44,9 @@
     ttsEndpoint: '/api/tts/speak',
     voicesEndpoint: '/api/tts/voices',
     ollamaEndpoint: '/api/ollama/generate',
+    searchEndpoint: '/api/search',
+    searchApiKey: '',
+    enableInternetSearch: false,
     voice: 'en_US-lessac-medium',
     language: 'en',
     speed: 1.0,
@@ -51,6 +54,7 @@
     mistralTimeout: 30000,
     systemPrompt: 'You are a helpful assistant.',
     onAction: null,
+    onLanguageChange: null,
     onSpeaking: null,
     onDone: null,
     onError: null
@@ -147,6 +151,36 @@
     return true;
   }
 
+  // ── INTERNET SEARCH ──────────────────────────────────
+  async function searchAndAnswer(query, lang) {
+    const searchLang = lang || CONFIG.language || 'en';
+    window.dbg && window.dbg('🌐 Searching [' + searchLang + ']: ' + query);
+    try {
+      const res = await fetch(
+        CONFIG.searchEndpoint + '?q=' + encodeURIComponent(query) +
+        '&mode=api&provider=serper&key=' + CONFIG.searchApiKey
+      );
+      const data = await res.json();
+      if (!data.results || data.results.length === 0) {
+        return 'I searched the internet but found no results for: ' + query;
+      }
+      const snippets = data.results.slice(0, 3)
+        .map(r => r.title + ': ' + r.snippet).join('\n');
+      const prompt = `Based on these search results, answer the user's question "${query}" in one or two short spoken sentences. Be direct and natural. Results:\n${snippets}\nAnswer:`;
+      const mistralRes = await fetch(CONFIG.ollamaEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'mistral:latest', prompt, stream: false }),
+        signal: AbortSignal.timeout(CONFIG.mistralTimeout)
+      });
+      const mistralData = await mistralRes.json();
+      return mistralData.response || 'I found some results but could not summarize them.';
+    } catch(e) {
+      window.dbg && window.dbg('🌐 Search failed: ' + e.message, 'warn');
+      return 'Sorry, I could not search the internet right now.';
+    }
+  }
+
   // ── CHAT ─────────────────────────────────────────────
   async function chat(userText) {
     window.dbg && window.dbg('💬 Chat input: ' + userText);
@@ -161,12 +195,15 @@
 User said: "${userText}"
 Return ONLY valid JSON, no explanation:
 {
-  "action": "search|filter|add|open|suggest|answer|unknown",
+  "action": "search|filter|add|open|suggest|answer|internet_search|change_language|unknown",
   "query": "search term if applicable or empty string",
+  "language": "en|he|ru|null",
   "dishType": "breakfast|lunch|dinner|dessert|snack|soup|salad|side-dish|null",
   "kosherType": "meat|dairy|pareve|non-kosher|null",
   "response": "friendly short response in SAME language as user said"
 }
+- internet_search: use when user asks about current events, prices, weather, news, sports scores, or any real-time information
+- change_language: use when user asks to switch language, e.g. "speak Russian", "talk in Hebrew", "говори по-русски", "דבר עברית", "switch to English" — set "language" to "en", "he", or "ru"
 No ellipsis. No truncation. JSON only.`;
 
       const res = await fetch(CONFIG.ollamaEndpoint, {
@@ -179,9 +216,20 @@ No ellipsis. No truncation. JSON only.`;
 
       const jsonMatch = data.response?.match(/\{[\s\S]*?\}/);
       const intent = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
-      window.dbg && window.dbg('🤖 Intent: ' + JSON.stringify(intent));
 
       if (intent && CONFIG.onAction) CONFIG.onAction(intent);
+
+      if (intent && intent.action === 'change_language' && intent.language) {
+        setLanguage(intent.language);
+        if (CONFIG.onLanguageChange) CONFIG.onLanguageChange(intent.language);
+      }
+
+      if (intent && intent.action === 'internet_search' && CONFIG.enableInternetSearch) {
+        window.dbg && window.dbg('🌐 Triggering internet search: ' + intent.query);
+        const answer = await searchAndAnswer(intent.query || userText, intent.language || CONFIG.language);
+        await speak(answer);
+        return { ...intent, internetAnswer: answer };
+      }
 
       const responseText = intent?.response || data.response || 'I understood!';
       await speak(responseText);
@@ -219,6 +267,49 @@ No ellipsis. No truncation. JSON only.`;
 
   function configure(options) { Object.assign(CONFIG, options); }
 
-  window.VoiceAssistant = { speak, listen, chat, setVoice, getVoices, stop, configure };
+  function setLanguage(lang) {
+    CONFIG.language = lang;
+    window.dbg && window.dbg('🌐 Language switched to: ' + lang);
+  }
+
+  async function detectLanguage(text) {
+    try {
+      const prompt = `Detect the language of this text. The user may be speaking Hebrew, Russian, or English.
+Text: "${text}"
+Return ONLY valid JSON, no explanation:
+{
+  "language": "en|he|ru",
+  "confidence": "high|low",
+  "isGarbled": true,
+  "meaning": "your best guess at what they meant in English"
+}
+Rules:
+- isGarbled: true if text looks like phonetic spelling of another language
+- Examples of garbled: "gauri porowski" = garbled Russian, "dvar ivrit" = garbled Hebrew
+- confidence: high if you are sure, low if unsure
+JSON only. No ellipsis.`;
+      const res = await fetch(CONFIG.ollamaEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'mistral:latest', prompt, stream: false }),
+        signal: AbortSignal.timeout(15000)
+      });
+      const data = await res.json();
+      const jsonMatch = data.response?.match(/\{[\s\S]*?\}/);
+      return jsonMatch ? JSON.parse(jsonMatch[0]) :
+        { language: 'en', confidence: 'low', isGarbled: false, meaning: text };
+    } catch(e) {
+      window.dbg && window.dbg('🔍 Language detection failed: ' + e.message, 'warn');
+      return { language: 'en', confidence: 'low', isGarbled: false, meaning: text };
+    }
+  }
+
+  function relisten(lang, onResult) {
+    window.dbg && window.dbg('🔄 Re-listening in: ' + lang);
+    CONFIG.language = lang;
+    listen(onResult);
+  }
+
+  window.VoiceAssistant = { speak, listen, chat, setVoice, getVoices, stop, configure, searchAndAnswer, setLanguage, detectLanguage, relisten };
 
 })();

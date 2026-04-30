@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>🎤 Voice Assistant</title>
+  <script src="/modules/OllamaClient.js"></script>
   <script src="/modules/VoiceAssistant.js"></script>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; }
@@ -69,11 +70,47 @@
       user-select: none;
     }
     .orb:hover { transform: scale(1.05); }
-    .orb.listening { background: linear-gradient(135deg, #e74c3c, #ff6b6b); animation: pulse 1s infinite; }
-    .orb.speaking  { background: linear-gradient(135deg, #2ecc71, #27ae60); animation: speak 0.5s infinite alternate; }
-    .orb.thinking  { background: linear-gradient(135deg, #9b59b6, #8e44ad); animation: pulse 0.7s infinite; }
+    .orb.listening  { background: linear-gradient(135deg, #e74c3c, #ff6b6b); animation: pulse 1s infinite; }
+    .orb.speaking   { background: linear-gradient(135deg, #2ecc71, #27ae60); animation: speak 0.5s infinite alternate; }
+    .orb.thinking   { background: linear-gradient(135deg, #9b59b6, #8e44ad); animation: pulse 0.7s infinite; }
+    .orb.detecting  { background: linear-gradient(135deg, #2980b9, #66aaff); animation: pulse 0.9s infinite; }
     @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.1)} }
     @keyframes speak { from{transform:scale(1)} to{transform:scale(1.08)} }
+
+    /* ── WAVEFORM ── */
+    .waveform { display:flex; align-items:center; justify-content:center; gap:4px; height:50px; margin:.5rem auto 1rem; width:200px; }
+    .waveform-bar { width:4px; border-radius:4px; background:rgba(255,255,255,0.2); height:4px; transition:height .1s ease; }
+    .waveform.listening .waveform-bar { background:#00ff88; animation:wave-listen .8s ease-in-out infinite; }
+    .waveform.listening .waveform-bar:nth-child(1){animation-delay:0s}
+    .waveform.listening .waveform-bar:nth-child(2){animation-delay:.1s}
+    .waveform.listening .waveform-bar:nth-child(3){animation-delay:.2s}
+    .waveform.listening .waveform-bar:nth-child(4){animation-delay:.3s}
+    .waveform.listening .waveform-bar:nth-child(5){animation-delay:.2s}
+    .waveform.listening .waveform-bar:nth-child(6){animation-delay:.1s}
+    .waveform.listening .waveform-bar:nth-child(7){animation-delay:0s}
+    .waveform.listening .waveform-bar:nth-child(8){animation-delay:.15s}
+    .waveform.listening .waveform-bar:nth-child(9){animation-delay:.25s}
+    .waveform.listening .waveform-bar:nth-child(10){animation-delay:.05s}
+    @keyframes wave-listen { 0%,100%{height:4px} 50%{height:35px} }
+    .waveform.speaking .waveform-bar { background:#FFB347; animation:wave-speak .4s ease-in-out infinite alternate; }
+    .waveform.speaking .waveform-bar:nth-child(odd){animation-delay:.1s}
+    .waveform.speaking .waveform-bar:nth-child(even){animation-delay:0s}
+    @keyframes wave-speak { from{height:8px} to{height:30px} }
+    .waveform.thinking .waveform-bar { background:#9b59b6; animation:wave-think 1.2s ease-in-out infinite; }
+    .waveform.thinking .waveform-bar:nth-child(1){animation-delay:0s}
+    .waveform.thinking .waveform-bar:nth-child(2){animation-delay:.15s}
+    .waveform.thinking .waveform-bar:nth-child(3){animation-delay:.3s}
+    .waveform.thinking .waveform-bar:nth-child(4){animation-delay:.45s}
+    .waveform.thinking .waveform-bar:nth-child(5){animation-delay:.6s}
+    .waveform.thinking .waveform-bar:nth-child(6){animation-delay:.45s}
+    .waveform.thinking .waveform-bar:nth-child(7){animation-delay:.3s}
+    .waveform.thinking .waveform-bar:nth-child(8){animation-delay:.15s}
+    .waveform.thinking .waveform-bar:nth-child(9){animation-delay:0s}
+    .waveform.thinking .waveform-bar:nth-child(10){animation-delay:.15s}
+    @keyframes wave-think { 0%,100%{height:4px} 50%{height:20px} }
+    .waveform.detecting .waveform-bar { background:#66aaff; animation:wave-detect .6s ease-in-out infinite alternate; }
+    @keyframes wave-detect { from{height:4px} to{height:15px} }
+    .waveform.idle .waveform-bar { height:4px; background:rgba(255,255,255,0.2); animation:none; }
     .status { font-size: 1rem; color: rgba(255,255,255,0.7); margin-bottom: 1.5rem; min-height: 1.5rem; }
     .transcript {
       background: rgba(255,255,255,0.05);
@@ -179,6 +216,18 @@
     <div class="subtitle">Powered by Mistral AI + Piper TTS · Fully Local & Private</div>
 
     <div class="orb" id="orb" onclick="handleOrbClick()">🎤</div>
+    <div class="waveform idle" id="waveform">
+      <div class="waveform-bar"></div>
+      <div class="waveform-bar"></div>
+      <div class="waveform-bar"></div>
+      <div class="waveform-bar"></div>
+      <div class="waveform-bar"></div>
+      <div class="waveform-bar"></div>
+      <div class="waveform-bar"></div>
+      <div class="waveform-bar"></div>
+      <div class="waveform-bar"></div>
+      <div class="waveform-bar"></div>
+    </div>
     <div class="status" id="status">Click the orb to start talking</div>
 
     <div class="transcript" id="transcript">Your words will appear here...</div>
@@ -193,6 +242,9 @@
         <option value="ru_RU-default">Russian</option>
       </select>
     </div>
+    <div id="lang-indicator" style="text-align:center;font-size:0.8rem;color:rgba(255,255,255,0.5);margin-bottom:1rem;">
+      🌐 Speaking: <span id="lang-name">English 🇬🇧</span>
+    </div>
 
     <div class="btn-row">
       <button class="btn btn-primary" onclick="handleOrbClick()">🎤 Talk</button>
@@ -204,6 +256,12 @@
       ⚠️ Piper TTS not installed — using browser voice.
       <a href="https://github.com/rhasspy/piper/releases" target="_blank">Install Piper</a>
       for better quality.
+    </div>
+
+    <div id="search-status" style="margin-top:1rem;padding:0.5rem 1rem;
+      background:rgba(0,255,136,0.1);border:1px solid rgba(0,255,136,0.3);
+      border-radius:10px;font-size:0.8rem;color:rgba(255,255,255,0.6);display:none">
+      🌐 Internet search enabled — I can answer real-time questions!
     </div>
   </div>
 
@@ -306,7 +364,7 @@
     voice: 'en_US-lessac-medium',
     language: 'en',
     useMistral: true,
-    systemPrompt: 'You are a helpful recipe assistant. Help users find, add, and manage recipes.',
+    systemPrompt: 'You are a helpful, friendly AI assistant. You can discuss any topic — recipes, general knowledge, science, history, advice, or anything else the user wants. When the user asks about recipes specifically, help them find, add, or manage recipes. Always respond in the SAME language the user speaks in.',
     onSpeaking: (text) => {
       setOrb('speaking');
       setStatus('Speaking...');
@@ -316,7 +374,19 @@
     onDone: () => {
       setOrb('idle');
       setStatus('Click the orb to start talking');
+      playChime('done');
       dbg('✅ TTS done', 'info');
+    },
+    onLanguageChange: (lang) => {
+      const langNames = { en: 'English 🇬🇧', he: 'Hebrew 🇮🇱', ru: 'Russian 🇷🇺' };
+      const voiceMap  = { he: 'he_IL-default', ru: 'ru_RU-default', en: 'en_US-lessac-medium' };
+      document.getElementById('lang-name').textContent = langNames[lang] || lang;
+      if (voiceMap[lang]) {
+        VoiceAssistant.setVoice(voiceMap[lang]);
+        document.getElementById('voice-select').value = voiceMap[lang];
+      }
+      playChime('switch');
+      dbg('🌐 Language switched to: ' + lang, 'info');
     },
     onError: (err) => {
       setOrb('idle');
@@ -325,10 +395,26 @@
     },
     onAction: (intent) => {
       dbg('🤖 Intent: ' + JSON.stringify(intent), 'info');
+      if (intent && intent.action === 'internet_search') {
+        setStatus('🌐 Searching internet...');
+      }
     }
   });
 
   dbg('🎤 Voice Assistant initialized', 'info');
+
+  fetch('/api/ollama/host').then(r => r.json()).then(data => {
+    OllamaClient.configure({ model: data.model || 'mistral:latest' });
+    dbg('🤖 OllamaClient: ' + data.host);
+  }).catch(() => {});
+
+  fetch('/api/config/search').then(r => r.json()).then(cfg => {
+    VoiceAssistant.configure({ enableInternetSearch: true, searchApiKey: cfg.serperKey });
+    document.getElementById('search-status').style.display = 'block';
+    dbg('🌐 Internet search enabled with Serper API', 'info');
+  }).catch(() => {
+    dbg('🌐 Internet search disabled — config not available', 'warn');
+  });
 
   fetch('/api/tts/voices').then(r => r.json()).then(data => {
     const status = data.piperInstalled
@@ -357,27 +443,133 @@
     toggleListen();
   }
 
+  // ═══ SESSION 8: Waveform + Language Detection + Chimes ═══
+
+  const SWITCH_MESSAGES = {
+    switch_to: {
+      en: 'Switching to English.',
+      he: 'עובר לעברית.',
+      ru: 'Переключаюсь на русский.'
+    },
+    garbled: {
+      en: "I couldn't understand that. Please try again.",
+      he: 'לא הצלחתי להבין. אנא נסה שוב.',
+      ru: 'Не удалось понять. Пожалуйста, попробуйте снова.'
+    }
+  };
+
+  function setWaveform(state) {
+    const wf = document.getElementById('waveform');
+    if (!wf) return;
+    wf.className = 'waveform ' + (state || 'idle');
+  }
+
+  function playChime(type) {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+      if (type === 'listen') {
+        osc.frequency.setValueAtTime(440, ctx.currentTime);
+        osc.frequency.linearRampToValueAtTime(660, ctx.currentTime + 0.15);
+      } else if (type === 'done') {
+        osc.frequency.setValueAtTime(660, ctx.currentTime);
+        osc.frequency.linearRampToValueAtTime(440, ctx.currentTime + 0.15);
+      } else if (type === 'switch') {
+        osc.frequency.setValueAtTime(440, ctx.currentTime);
+        osc.frequency.linearRampToValueAtTime(550, ctx.currentTime + 0.1);
+        osc.frequency.linearRampToValueAtTime(660, ctx.currentTime + 0.2);
+      }
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.4);
+      dbg('🔔 Chime: ' + type);
+    } catch(e) {
+      dbg('🔔 Chime failed: ' + e.message, 'warn');
+    }
+  }
+
+  async function processRecognizedText(text) {
+    document.getElementById('transcript').textContent = text;
+    dbg('🗣 Speech recognized: "' + text + '"');
+
+    const heChars = /[֐-׿]/.test(text);
+    const ruChars = /[Ѐ-ӿ]/.test(text);
+    const langNames = { en: 'English 🇬🇧', he: 'Hebrew 🇮🇱', ru: 'Russian 🇷🇺' };
+    const voiceMap  = { he: 'he_IL-default', ru: 'ru_RU-default', en: 'en_US-lessac-medium' };
+
+    if (heChars) {
+      VoiceAssistant.configure({ language: 'he' });
+      VoiceAssistant.setVoice(voiceMap.he);
+      document.getElementById('lang-name').textContent = langNames.he;
+      document.getElementById('voice-select').value = voiceMap.he;
+      dbg('🌐 Script detected: Hebrew');
+    } else if (ruChars) {
+      VoiceAssistant.configure({ language: 'ru' });
+      VoiceAssistant.setVoice(voiceMap.ru);
+      document.getElementById('lang-name').textContent = langNames.ru;
+      document.getElementById('voice-select').value = voiceMap.ru;
+      dbg('🌐 Script detected: Russian');
+    } else {
+      setOrb('detecting');
+      setStatus('🔍 Detecting language...');
+      dbg('🔍 Running Mistral language detection...');
+      const detected = await VoiceAssistant.detectLanguage(text);
+      dbg('🔍 Detected: ' + JSON.stringify(detected));
+
+      if (detected.isGarbled) {
+        dbg('⚠️ Garbled speech — re-listening in: ' + detected.language, 'warn');
+        const targetLang = detected.language || 'en';
+        VoiceAssistant.configure({ language: targetLang });
+        VoiceAssistant.setVoice(voiceMap[targetLang] || voiceMap.en);
+        document.getElementById('lang-name').textContent = langNames[targetLang] || langNames.en;
+        document.getElementById('voice-select').value = voiceMap[targetLang] || voiceMap.en;
+        setStatus('🔄 Re-listening in ' + (langNames[targetLang] || targetLang) + '...');
+        playChime('switch');
+        await VoiceAssistant.speak(SWITCH_MESSAGES.garbled[targetLang] || SWITCH_MESSAGES.garbled.en);
+        isListening = false;
+        toggleListen();
+        return;
+      }
+
+      if (detected.language && detected.language !== 'en') {
+        const tgt = detected.language;
+        VoiceAssistant.configure({ language: tgt });
+        VoiceAssistant.setVoice(voiceMap[tgt] || voiceMap.en);
+        document.getElementById('lang-name').textContent = langNames[tgt] || tgt;
+        document.getElementById('voice-select').value = voiceMap[tgt] || voiceMap.en;
+        dbg('🌐 Language detected: ' + tgt);
+      }
+    }
+
+    setOrb('thinking');
+    setStatus('🤖 Mistral is thinking...');
+    dbg('🤖 Sending to Mistral…');
+    const intent = await VoiceAssistant.chat(text);
+    if (intent) {
+      dbg('✅ Response received — action: ' + (intent.action || '?'), 'info');
+    }
+  }
+
   function toggleListen() {
     if (isListening) return;
     isListening = true;
     setOrb('listening');
     setStatus('🎤 Listening... speak now');
     document.getElementById('transcript').textContent = 'Listening...';
+    playChime('listen');
     dbg('🎤 Listening started');
 
     VoiceAssistant.listen(async (text) => {
       isListening = false;
-      document.getElementById('transcript').textContent = text;
-      dbg('🗣 Speech recognized: "' + text + '"');
-      setOrb('thinking');
-      setStatus('🤖 Mistral is thinking...');
-      dbg('🤖 Sending to Mistral…');
-      const intent = await VoiceAssistant.chat(text);
-      if (intent) {
-        dbg('✅ Response received — action: ' + (intent.action || '?'), 'info');
-      }
+      await processRecognizedText(text);
     });
   }
+
+  // END SESSION 8: Waveform + Language Detection + Chimes
 
   function changeVoice(voice) {
     VoiceAssistant.setVoice(voice);
@@ -401,7 +593,12 @@
   function setOrb(state) {
     const orb = document.getElementById('orb');
     orb.className = 'orb ' + (state === 'idle' ? '' : state);
-    orb.textContent = state === 'listening' ? '🎤' : state === 'speaking' ? '🔊' : state === 'thinking' ? '🤔' : '🎤';
+    orb.textContent = state === 'listening' ? '🎤' :
+                      state === 'speaking'  ? '🔊' :
+                      state === 'thinking'  ? '🤔' :
+                      state === 'detecting' ? '🔍' : '🎤';
+    setWaveform(state === 'idle' ? 'idle' : state);
+    dbg('🎨 State: ' + state);
   }
 
   function setStatus(text) { document.getElementById('status').textContent = text; }

@@ -10,6 +10,7 @@
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="/modules/OllamaClient.js"></script>
 <script src="/modules/SearchEngine.js"></script>
 <style>
 :root {
@@ -3052,6 +3053,13 @@ async function init() {
     SearchEngine.configure({ mode: 'scrape' });
   }
   // END SESSION 8: API Key Security
+
+  fetch('/api/ollama/host').then(r => r.json()).then(data => {
+    OllamaClient.configure({
+      model: data.model || 'mistral:latest'
+    });
+    dbg('🤖 OllamaClient configured: ' + data.host);
+  }).catch(() => {});
 }
 
 init();

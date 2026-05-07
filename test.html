@@ -1469,7 +1469,7 @@ def('3.4',3,'3.4 App Improvement Suggestions','🤖 Mistral reviews all results 
 // ── SERIES 4: AI SERVICES INTEGRATION ────────────────────────────────
 
 def('4.1',4,'4.1 AI Services Reachable','🔗 ai-services health check',async()=>{
-  const r=await fetch('http://localhost:8888/health');
+  const r=await fetch('https://localhost:8889/health');
   if(!r.ok) throw new Error('Start ai-services: cd ai-services && npm start');
   const d=await r.json();
   if(d.status!=='ok') throw new Error('Start ai-services: cd ai-services && npm start');

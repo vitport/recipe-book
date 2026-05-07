@@ -29,7 +29,8 @@
       "Bash(cp piper-temp/piper/*.dll .)",
       "Bash(cp -r piper-temp/piper/espeak-ng-data .)",
       "Bash(./piper.exe --model voices/en_US-lessac-medium.onnx --output_file /tmp/test.wav)",
-      "Read(//tmp/**)"
+      "Read(//tmp/**)",
+      "Bash(curl *)"
     ]
   }
 }

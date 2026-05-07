@@ -56,47 +56,75 @@ app.post('/save-recipes', (req, res) => {
   }
 });
 
-// ── OLLAMA PROXY ─────────────────────────────────────────────────────
-// Routes browser requests to Ollama, avoiding browser CORS restrictions.
+// ── OLLAMA PROXY (via ai-services) ───────────────────────────────────
+// Forwards Ollama requests to ai-services instead of direct Ollama access.
 
-function ollamaRequest(method, ollamaPath, body, res) {
-  const ollamaUrl = new URL(config.OLLAMA_HOST || 'http://localhost:11434');
-  const opts = {
-    hostname: ollamaUrl.hostname,
-    port: parseInt(ollamaUrl.port) || 11434,
-    path: ollamaPath,
-    method,
-    headers: { 'Content-Type': 'application/json' },
-  };
-  const req = http.request(opts, ollamaRes => {
-    res.status(ollamaRes.statusCode);
-    let data = '';
-    ollamaRes.on('data', chunk => { data += chunk; });
-    ollamaRes.on('end', () => {
-      try { res.json(JSON.parse(data)); }
-      catch(e) { res.send(data); }
-    });
-  });
-  req.on('error', err => res.status(502).json({ error: 'Ollama not reachable: ' + err.message }));
-  if (body) req.write(JSON.stringify(body));
-  req.end();
-}
+const AI_SERVICES = 'http://localhost:8888';
 
 app.get('/api/ollama/status', (req, res) => {
-  ollamaRequest('GET', '/api/tags', null, res);
+  http.get(AI_SERVICES + '/api/ollama/status', (r) => {
+    let data = '';
+    r.on('data', c => data += c);
+    r.on('end', () => {
+      try { res.json(JSON.parse(data)); }
+      catch(e) { res.status(503).json({ error: 'ai-services unreachable' }); }
+    });
+  }).on('error', () => res.status(503).json({ error: 'ai-services unreachable' }));
 });
 
 app.post('/api/ollama/generate', (req, res) => {
-  ollamaRequest('POST', '/api/generate', req.body, res);
+  const body = JSON.stringify({ stream: false, ...req.body });
+  const options = {
+    hostname: 'localhost',
+    port: 8888,
+    path: '/api/ollama/generate',
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(body)
+    }
+  };
+  const req2 = http.request(options, (r) => {
+    let data = '';
+    r.on('data', c => data += c);
+    r.on('end', () => {
+      try { res.json(JSON.parse(data)); }
+      catch(e) { res.status(503).json({ error: 'ai-services unreachable' }); }
+    });
+  });
+  req2.on('error', () => res.status(503).json({ error: 'ai-services unreachable' }));
+  req2.setTimeout(180000, () => { req2.destroy(); res.status(504).json({ error: 'timeout' }); });
+  req2.write(body);
+  req2.end();
 });
 
 app.post('/api/ollama/release', (req, res) => {
-  ollamaRequest('POST', '/api/generate', { model: 'mistral', keep_alive: 0 }, res);
+  const body = JSON.stringify({ model: req.body?.model || 'mistral:latest', keep_alive: 0 });
+  const options = {
+    hostname: 'localhost',
+    port: 8888,
+    path: '/api/ollama/release',
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(body)
+    }
+  };
+  const req2 = http.request(options, (r) => {
+    let data = '';
+    r.on('data', c => data += c);
+    r.on('end', () => {
+      try { res.json(JSON.parse(data)); }
+      catch(e) { res.json({ success: true }); }
+    });
+  });
+  req2.on('error', () => res.json({ success: true }));
+  req2.write(body);
+  req2.end();
 });
 
-// ── OLLAMA HOST INFO ─────────────────────
 app.get('/api/ollama/host', (req, res) => {
-  res.json({ host: config.OLLAMA_HOST, model: 'mistral:latest' });
+  res.json({ host: AI_SERVICES, via: 'ai-services' });
 });
 
 // ── IMAGE PROXY ───────────────────────────────────────────────────────

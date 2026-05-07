@@ -269,10 +269,12 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
     <button class="tab-btn on"  onclick="switchTab(0)">🏗️ Series 1: Infrastructure</button>
     <button class="tab-btn"     onclick="switchTab(1)">🔬 Series 2: Features</button>
     <button class="tab-btn"     onclick="switchTab(2)">🤖 Series 3: AI Deep Tests</button>
+    <button class="tab-btn"     onclick="switchTab(3)">🔗 Series 4: AI Services</button>
   </div>
   <div class="tab-panel on" id="panel0"></div>
   <div class="tab-panel"    id="panel1"></div>
   <div class="tab-panel"    id="panel2"></div>
+  <div class="tab-panel"    id="panel3"></div>
 
   <div class="report-card" id="reportCard" style="display:none">
     <div class="report-hdr">
@@ -1464,16 +1466,53 @@ def('3.4',3,'3.4 App Improvement Suggestions','🤖 Mistral reviews all results 
   return{details:`App quality: ${score}/10 — ${tips}`,aiVerdict:v,score};
 });
 
+// ── SERIES 4: AI SERVICES INTEGRATION ────────────────────────────────
+
+def('4.1',4,'4.1 AI Services Reachable','🔗 ai-services health check',async()=>{
+  const r=await fetch('http://localhost:8888/health');
+  if(!r.ok) throw new Error('Start ai-services: cd ai-services && npm start');
+  const d=await r.json();
+  if(d.status!=='ok') throw new Error('Start ai-services: cd ai-services && npm start');
+  if(d.service!=='ai-services') throw new Error('Start ai-services: cd ai-services && npm start');
+  return{details:`ai-services running — status:${d.status}`};
+});
+
+def('4.2',4,'4.2 Ollama via AI Services','🔗 Recipe Book → ai-services → Ollama chain',async()=>{
+  const r=await fetch('/api/ollama/status');
+  if(!r.ok) throw new Error('Ollama proxy returned '+r.status);
+  const d=await r.json();
+  if(!('models' in d)) throw new Error('Expected models key in response');
+  return{details:`Chain working — ${d.models.length} model(s) available`};
+});
+
+def('4.3',4,'4.3 Generate via AI Services','🔗 POST /api/ollama/generate through ai-services',async()=>{
+  const ctrl=new AbortController();
+  const timer=setTimeout(()=>ctrl.abort(),180000);
+  let r;
+  try{
+    r=await fetch('/api/ollama/generate',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'mistral:latest',prompt:'Say: ai-services works',stream:false}),
+      signal:ctrl.signal
+    });
+  }finally{clearTimeout(timer);}
+  if(!r.ok) throw new Error('Generate returned '+r.status);
+  const d=await r.json();
+  if(typeof d.response!=='string'||!d.response.trim()) throw new Error('Expected non-empty response string');
+  return{details:`Generate OK — "${d.response.trim().slice(0,80)}"`};
+});
+
 // ── UI BUILD ──────────────────────────────────────────────────────────
 function buildUI(){
-  const panels={1:'panel0',2:'panel1',3:'panel2'};
+  const panels={1:'panel0',2:'panel1',3:'panel2',4:'panel3'};
   const groups={};
   for(const t of TESTS){
     const key=`${t.series}|${t.group}`;
     if(!groups[key]) groups[key]={series:t.series,group:t.group,tests:[]};
     groups[key].tests.push(t);
   }
-  const byPanel={1:'',2:'',3:''};
+  const byPanel={1:'',2:'',3:'',4:''};
   for(const {series,group,tests} of Object.values(groups)){
     let rows='';
     for(const t of tests){
@@ -1496,6 +1535,10 @@ function buildUI(){
     `<div style="background:#FFF3CD;border:1px solid #FFC107;border-radius:10px;padding:.85rem 1.1rem;margin-bottom:1.2rem;font-size:.88rem;font-weight:700;color:#856404">
       ⚠️ Series 3 AI tests take <strong>10–15 minutes</strong>. Each Mistral call has a 3-minute timeout with auto-retry and a 5-second cooldown between calls. Requires Ollama + Mistral running locally.
     </div>`+byPanel[3];
+  document.getElementById('panel3').innerHTML=
+    `<div style="background:#D1ECF1;border:1px solid #17A2B8;border-radius:10px;padding:.85rem 1.1rem;margin-bottom:1.2rem;font-size:.88rem;font-weight:700;color:#0C5460">
+      ℹ️ Series 4 tests require <strong>ai-services running on port 8888</strong>. Start it with: <code>cd ai-services &amp;&amp; npm start</code>
+    </div>`+byPanel[4];
 }
 
 function renderTest(t){
@@ -1750,6 +1793,7 @@ function showReport(elapsed){
     <div class="report-stat"><div class="report-stat-val">${seriesPct(1)}%</div><div class="report-stat-lbl">🏗️ Series 1</div></div>
     <div class="report-stat"><div class="report-stat-val">${seriesPct(2)}%</div><div class="report-stat-lbl">🔬 Series 2</div></div>
     <div class="report-stat"><div class="report-stat-val">${seriesPct(3)}%</div><div class="report-stat-lbl">🤖 Series 3</div></div>
+    <div class="report-stat"><div class="report-stat-val">${seriesPct(4)}%</div><div class="report-stat-lbl">🔗 Series 4</div></div>
     <div class="report-stat"><div class="report-stat-val" style="color:var(--ai)">${avg}</div><div class="report-stat-lbl">⭐ Avg AI Score</div></div>
     <div class="report-stat"><div class="report-stat-val">${elapsed}s</div><div class="report-stat-lbl">⏱️ Duration</div></div>
   `;
@@ -1790,14 +1834,14 @@ function buildReportData(){
   const elapsed=suiteStart?((Date.now()-suiteStart)/1000).toFixed(1):0;
   const scores=TESTS.filter(t=>t.score!==null).map(t=>t.score);
   const avgScore=scores.length?+(scores.reduce((a,b)=>a+b,0)/scores.length).toFixed(1):null;
-  const seriesNames={1:'Series 1: Infrastructure',2:'Series 2: Features',3:'Series 3: AI Deep Tests'};
+  const seriesNames={1:'Series 1: Infrastructure',2:'Series 2: Features',3:'Series 3: AI Deep Tests',4:'Series 4: AI Services Integration'};
   const groups={};
   for(const t of TESTS){
     const k=`${t.series}|${t.group}`;
     if(!groups[k]) groups[k]={series:t.series,name:t.group,tests:[]};
     groups[k].tests.push(t);
   }
-  const seriesArr=[1,2,3].map(s=>{
+  const seriesArr=[1,2,3,4].map(s=>{
     const ts=TESTS.filter(t=>t.series===s&&t.status!=='skip');
     const pct=ts.length?Math.round(ts.filter(t=>t.status==='pass').length/ts.length*100):0;
     const grps=Object.values(groups).filter(g=>g.series===s);

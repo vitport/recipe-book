@@ -61,6 +61,17 @@ app.post('/save-recipes', (req, res) => {
 
 const AI_SERVICES = 'http://localhost:8888';
 
+app.get('/api/ai-services/health', (req, res) => {
+  http.get(AI_SERVICES + '/health', (r) => {
+    let data = '';
+    r.on('data', c => data += c);
+    r.on('end', () => {
+      try { res.json(JSON.parse(data)); }
+      catch(e) { res.status(503).json({ error: 'ai-services unreachable' }); }
+    });
+  }).on('error', () => res.status(503).json({ error: 'ai-services unreachable' }));
+});
+
 app.get('/api/ollama/status', (req, res) => {
   http.get(AI_SERVICES + '/api/ollama/status', (r) => {
     let data = '';

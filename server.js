@@ -34,6 +34,10 @@ app.use((req, res, next) => {
 
 app.use(express.static(__dirname));
 
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', project: 'recipe-book', port: 8080 });
+});
+
 app.get('/recipes.json', (req, res) => {
   try {
     const data = fs.readFileSync(RECIPES_FILE, 'utf8');
